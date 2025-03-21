@@ -11,7 +11,7 @@ Please cite our work if you find it helpful:
 ```
 @article{pun2025hsm,
     title = {{HSM}: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation},
-    author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and  Chang, Angel X. and Savva, Manolis},
+    author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and Chang, Angel X. and Savva, Manolis},
     year = {2025},
     eprint = {xxxx.xxxxx},
     archivePrefix = {arXiv}
