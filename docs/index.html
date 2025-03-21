@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation">
+  <meta name="keywords" content="HSM, hierarchical scene motifs, multi-scale, indoor scene generation, indoor scene synthesis, text-conditioned">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <title>HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation</title>
+
+  <!-- Google tag (gtag.js) -->
+  <!-- <script async src=""></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  </script> -->
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <!-- <link rel="icon" href="./static/images/favicon.svg"> -->
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+
+<body>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-widescreen">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-2 publication-title">
+              HSM: Hierarchical Scene Motifs for <br> Multi-Scale Indoor Scene Generation
+            </h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="https://houip.github.io/portfolio/">Hou In Derek Pun</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://iv-t.github.io/">Hou In Ivan Tam</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://atwang16.github.io/">Austin T. Wang</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                <a href="">Xiaoliang Huo</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                  <a href="https://angelxuanchang.github.io/">Angel X. Chang</a><sup>1,2</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://msavva.github.io/">Manolis Savva</a><sup>1</sup>
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>1</sup>Simon Fraser University,</span>
+              <span class="author-block"><sup>2</sup>Alberta Machine Intelligence Institute (Amii)</span>
+            </div>
+            <!-- <div class="is-size-5 publication-authors">
+              <span class="author-block" style="color:#a771ac"></span>
+            </div> -->
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <!-- PDF Link. -->
+                <!-- <span class="link-block">
+                  <a href=""
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </span>
+                    <span>Paper</span>
+                  </a>
+                </span> -->
+                <span class="link-block">
+                  <a href="" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+                <!-- Video Link. -->
+                <!-- <span class="link-block">
+                  <a href="" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                    </span>
+                    <span>Video</span>
+                  </a>
+                </span> -->
+                <!-- Code Link. -->
+                <span class="link-block">
+                  <a href="https://github.com/3dlg-hcvc/hsm" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code</span>
+                  </a>
+                </span>
+                <!-- Dataset Link. -->
+                <!-- <span class="link-block">
+                <a href="" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="far fa-images"></i>
+                  </span>
+                  <span>Data</span>
+                  </a>
+                </span> -->
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- <section class="section"> -->
+    <!-- <div class="container is-max-widescreen"> -->
+      <!-- Paper video. -->
+      <!-- <div class="columns is-centered has-text-centered"> -->
+        <!-- <div class="column is-four-fifths"> -->
+          <!-- <h2 class="title is-3">Video</h2> -->
+          <!-- <div class="publication-video">
+            <iframe src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div> -->
+        <!-- </div> -->
+      <!-- </div> -->
+      <!--/ Paper video. -->
+    <!-- </div>   -->
+  <!-- </section> -->
+
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <div class="columns is-centered">
+
+        <!-- Abstract. --> 
+        <div class="column is-full-width is-large">
+          <div class="column has-text-centered">
+
+            <!-- <div class="center-container" style="margin-left: -10px"> -->
+              <!-- <h2 class="title is-3">Abstract</h2> -->
+              <!-- <video autoplay playsinline muted loop controls>
+                <source src="">
+              </video> -->
+            <!-- </div> -->
+
+            <div class="content has-text-justified mt-4">
+              <p>
+                Despite advances in indoor 3D scene layout generation, synthesizing scenes with dense object arrangements remains challenging. 
+                Existing methods primarily focus on large furniture while neglecting smaller objects, resulting in unrealistically empty scenes. 
+                Those that place small objects typically do not honor arrangement specifications, resulting in largely random placement not following the text description.
+              </p>
+              <p>
+                We present HSM, a hierarchical framework for indoor scene generation with dense object arrangements across spatial scales. 
+                Indoor scenes are inherently hierarchical, with surfaces supporting objects at different scales, from large furniture on floors to smaller objects on tables and shelves. 
+                HSM embraces this hierarchy and exploits recurring cross-scale spatial patterns to generate complex and realistic indoor scenes in a unified manner. 
+                Our experiments show that HSM outperforms existing methods by generating scenes that better conform to user input across room types and spatial configurations.
+              </p>
+            </div>
+
+          </div>
+        </div>
+        <!--/ Abstract. -->
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-widescreen">
+      <!-- Methods. -->
+      <div class="columns is-centered">
+        <div class="column is-full-width">
+          <div class="content has-text-justified">
+            <div class="center-container">
+              <h3 class="title is-3">Under development. More coming soon.</h3>
+            </div>
+            <p>
+              Meanwhile, check our other work <a href="https://3dlg-hcvc.github.io/projects/">here</a>.
+            </p>
+          </div>
+        </div> 
+      </div>  
+    </div> 
+    <!--/ Methods. -->
+  </section>
+
+  <section class="section" id="BibTeX">
+    <div class="container is-max-widescreen content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>
+      @article{pun2025hsm,
+          title = {{HSM}: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation},
+          author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and Chang, Angel X. and Savva, Manolis},
+          year = {2025},
+          eprint = {xxxx.xxxxx},
+          archivePrefix = {arXiv}
+      }
+      </code></pre>
+    </div>
+  </section>
+
+  <section class="section" id="BibTeX">
+    <div class="container is-max-widescreen content">
+      <h2 class="title">Acknowledgements</h2>
+      <p>
+        This work was funded in part by a CIFAR AI Chair, a Canada Research Chair, NSERC Discovery Grants, and enabled by support from the <a href="https://alliancecan.ca/">Digital Research Alliance of Canada</a>.
+        We also thank Jiayi Liu, Weikun Peng, and Qirui Wu for helpful discussions.
+      </p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="content has-text-centered">
+        <a class="icon-link" href="">
+          <i class="fas fa-file-pdf"></i>
+        </a>
+        <a class="icon-link" href="" class="external-link" disabled>
+          <i class="fab fa-github"></i>
+        </a>
+      </div>
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This website is licensed under a <a rel="license"
+                href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+                Commons Attribution-ShareAlike 4.0 International License</a>.
+              The template is borrowed from <a href="https://nerfies.github.io/">Nerfies</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
