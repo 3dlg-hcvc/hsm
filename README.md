@@ -4,7 +4,7 @@
 
 [Hou In Derek Pun](https://houip.github.io/), [Hou In Ivan Tam](https://iv-t.github.io/), [Austin T. Wang](https://atwang16.github.io/), [Xiaoliang Huo](), [Angel X. Chang](https://angelxuanchang.github.io/), [Manolis Savva](https://msavva.github.io/)
 
-[Page](https://3dlg-hcvc.github.io/hsm/) | [Paper]()
+[Page](https://3dlg-hcvc.github.io/hsm/) | [Paper](http://arxiv.org/abs/2503.16848)
 
 ## Citation
 Please cite our work if you find it helpful:
@@ -13,7 +13,7 @@ Please cite our work if you find it helpful:
     title = {{HSM}: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation},
     author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and Chang, Angel X. and Savva, Manolis},
     year = {2025},
-    eprint = {xxxx.xxxxx},
+    eprint = {2503.16848},
     archivePrefix = {arXiv}
 }
 ```
