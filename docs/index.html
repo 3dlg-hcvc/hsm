@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="description" content="HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation">
-  <meta name="keywords" content="HSM, hierarchical scene motifs, multi-scale, indoor scene generation, indoor scene synthesis, text-conditioned">
+  <meta name="keywords" content="HSM, hierarchical scene motifs, multi-scale, indoor scene generation, 3D, text-conditioned">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
   <title>HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation</title>
@@ -24,13 +24,12 @@
   <link rel="stylesheet" href="./static/css/bulma.min.css">
   <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
   <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
-  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
   <link rel="stylesheet" href="./static/css/index.css">
   <!-- <link rel="icon" href="./static/images/favicon.svg"> -->
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script defer src="./static/js/fontawesome.all.min.js"></script>
   <script src="./static/js/bulma-carousel.min.js"></script>
   <script src="./static/js/bulma-slider.min.js"></script>
   <script src="./static/js/index.js"></script>
@@ -38,12 +37,12 @@
 
 <body>
   
-<!-- Google Tag Manager (noscript) -->
-<noscript>
-  <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WMNNGPF3"
-  height="0" width="0" style="display:none;visibility:hidden"></iframe>
-</noscript>
-<!-- End Google Tag Manager (noscript) -->
+  <!-- Google Tag Manager (noscript) -->
+  <noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WMNNGPF3"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe>
+  </noscript>
+  <!-- End Google Tag Manager (noscript) -->
   
   <section class="hero">
     <div class="hero-body">
@@ -55,7 +54,7 @@
             </h1>
             <div class="is-size-5 publication-authors">
               <span class="author-block">
-                <a href="https://houip.github.io/portfolio/">Hou In Derek Pun</a><sup>1</sup>,
+                <a href="https://houip.github.io/">Hou In Derek Pun</a><sup>1</sup>,
               </span>
               <span class="author-block">
                 <a href="https://iv-t.github.io/">Hou In Ivan Tam</a><sup>1</sup>,
@@ -78,9 +77,9 @@
               <span class="author-block"><sup>1</sup>Simon Fraser University,</span>
               <span class="author-block"><sup>2</sup>Alberta Machine Intelligence Institute (Amii)</span>
             </div>
-            <div class="is-size-5 publication-authors">
+            <!-- <div class="is-size-5 publication-authors">
               <span class="author-block" style="color:#a771ac">3DV 2025 Nectar Exploration Edge Track</span>
-            </div>
+            </div> -->
 
             <div class="column has-text-centered">
               <div class="publication-links">
@@ -103,23 +102,23 @@
                   </a>
                 </span>
                 <!-- Video Link. -->
-                <!-- <span class="link-block">
-                  <a href="" class="external-link button is-normal is-rounded is-dark">
+                <span class="link-block">
+                  <a href="https://youtu.be/2NUuDVBrchQ" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon">
                       <i class="fab fa-youtube"></i>
                     </span>
                     <span>Video</span>
                   </a>
-                </span> -->
+                </span>
                 <!-- Code Link. -->
-                <!-- <span class="link-block">
+                <span class="link-block">
                   <a href="https://github.com/3dlg-hcvc/hsm" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon">
                       <i class="fab fa-github"></i>
                     </span>
                     <span>Code</span>
                   </a>
-                </span> -->
+                </span>
                 <!-- Dataset Link. -->
                 <!-- <span class="link-block">
                 <a href="" class="external-link button is-normal is-rounded is-dark">
@@ -138,46 +137,35 @@
     </div>
   </section>
 
-  <!-- <section class="section"> -->
-    <!-- <div class="container is-max-widescreen"> -->
-      <!-- Paper video. -->
-      <!-- <div class="columns is-centered has-text-centered"> -->
-        <!-- <div class="column is-four-fifths"> -->
-          <!-- <h2 class="title is-3">Video</h2> -->
-          <!-- <div class="publication-video">
-            <iframe src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-          </div> -->
-        <!-- </div> -->
-      <!-- </div> -->
-      <!--/ Paper video. -->
-    <!-- </div>   -->
-  <!-- </section> -->
+  <section class="hero teaser">
+    <div class="container is-max-desktop">
+      <div class="hero-body">
+        <video id="teaser_1" autoplay="" muted="" loop="" playsinline="" height="100%">
+          <source src="./static/videos/showcase.mp4" type="video/mp4" preload="auto">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+  </section>
 
   <section class="section">
     <div class="container is-max-widescreen">
       <div class="columns is-centered">
 
         <!-- Abstract. --> 
-        <div class="column is-full-width is-large">
+        <div class="column is-full-width is-four-fifths">
           <div class="column has-text-centered">
 
-            <!-- <div class="center-container" style="margin-left: -10px"> -->
-              <!-- <h2 class="title is-3">Abstract</h2> -->
-              <!-- <video autoplay playsinline muted loop controls>
-                <source src="">
-              </video> -->
-            <!-- </div> -->
-
-            <div class="content has-text-justified mt-4">
+            <div class="content has-text-justified">
               <p>
-                Despite advances in indoor 3D scene layout generation, synthesizing scenes with dense object arrangements remains challenging. 
-                Existing methods primarily focus on large furniture while neglecting smaller objects, resulting in unrealistically empty scenes. 
+                Despite advances in indoor 3D scene layout generation, synthesizing scenes with dense object arrangements remains challenging.
+                Existing methods focus on large furniture while neglecting smaller objects, resulting in unrealistically empty scenes. 
                 Those that place small objects typically do not honor arrangement specifications, resulting in largely random placement not following the text description.
               </p>
               <p>
-                We present HSM, a hierarchical framework for indoor scene generation with dense object arrangements across spatial scales. 
-                Indoor scenes are inherently hierarchical, with surfaces supporting objects at different scales, from large furniture on floors to smaller objects on tables and shelves. 
-                HSM embraces this hierarchy and exploits recurring cross-scale spatial patterns to generate complex and realistic indoor scenes in a unified manner. 
+                We present Hierarchical Scene Motifs (HSM): a hierarchical framework for indoor scene generation with dense object arrangements across spatial scales.
+                Indoor scenes are inherently hierarchical, with surfaces supporting objects at different scales, from large furniture on floors to smaller objects on tables and shelves.
+                HSM embraces this hierarchy and exploits recurring cross-scale spatial patterns to generate complex and realistic scenes in a unified manner.
                 Our experiments show that HSM outperforms existing methods by generating scenes that better conform to user input across room types and spatial configurations.
               </p>
             </div>
@@ -190,40 +178,85 @@
   </section>
 
   <section class="section">
-    <div class="container is-max-widescreen">
-      <!-- Methods. -->
+    <div class="container is-max-desktop">
       <div class="columns is-centered">
         <div class="column is-full-width">
+          <h2 class="title is-3">Pipeline</h2>
+          <video id="teaser_1" autoplay="" muted="" loop="" playsinline="" height="100%">
+            <source src="./static/videos/method.mp4" type="video/mp4" preload="auto">
+            Your browser does not support the video tag.
+          </video>
           <div class="content has-text-justified">
-            <div class="center-container">
-              <h3 class="title is-3">Under development. More coming soon.</h3>
-            </div>
-            <p>
-              Meanwhile, check our other work <a href="https://3dlg-hcvc.github.io/projects/">here</a>.
+            <p>        
+              Given a room description and optional room boundary as input, HSM decomposes indoor scenes hierarchically and identifies valid support regions (highlighted in pink boxes) at each level of the hierarchy. The system then populates these regions by generating and optimizing scene motifs in a unified manner across scales, generating scenes with dense object arrangements.
             </p>
           </div>
-        </div> 
-      </div>  
-    </div> 
-    <!--/ Methods. -->
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="section" id="BibTeX">
-    <div class="container is-max-widescreen content">
-      <h2 class="title">BibTeX</h2>
-      <pre><code>
-      @article{pun2025hsm,
-          title = {{HSM}: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation},
-          author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and Chang, Angel X. and Savva, Manolis},
-          year = {2025},
-          eprint = {2503.16848},
-          archivePrefix = {arXiv}
-      }
-      </code></pre>
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="column is-full-width">
+        <h4 class="title is-3">Results</h4>
+        <img src="static/images/results.png" alt="Results">
+        <div class="content has-text-justified">
+          <p>
+            Objects and spatial relationships in the input text are highlighted with colors and underlines, and spatial relationships are emphasized using boxes. 
+            HSM produces more coherent spatial arrangements and is better aligned
+            to the input compared to existing approaches.
+          </p>
+        </div>
+      </div>
+      <div class="column is-full-width">
+        <h4 class="title is-3">Object Arrangement Results</h4>
+        <img src="static/images/results_zoomin.png" alt="Results" style="width: 60%; display: block; margin: 15px auto;">
+        <div class="content has-text-justified">
+          <p>
+            Each row shows close-up views of object arrangements from the input description.
+            HSM better follows the spatial relationships and placement instructions specified in the input text.
+          </p>
+        </div>
+      <div class="column is-full-width">
+        <h4 class="title is-3">Rendered Results</h4>
+        <img src="static/images/results_rendered.png" alt="Results">
+      </div>
     </div>
   </section>
 
   <section class="section" id="BibTeX">
+    <div class="container is-max-widescreen content">
+      <div class="columns is-centered">
+        <div class="column is-full">
+          <div class="columns is-vcentered">
+            <div class="column">
+              <h2 class="title">BibTeX</h2>
+            </div>
+            <div class="column is-narrow">
+              <button id="copy-bibtex" class="button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="fas fa-copy"></i>
+                </span>
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <pre><code id="bibtex-code">
+@article{pun2025hsm,
+    title = {{HSM}: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation},
+    author = {Pun, Hou In Derek and Tam, Hou In Ivan and and Wang, Austin T. and Huo, Xiaoliang and Chang, Angel X. and Savva, Manolis},
+    year = {2025},
+    eprint = {2503.16848},
+    archivePrefix = {arXiv}
+}
+</code></pre>
+    </div>
+  </section>
+
+  <section class="section" id="Acknowledgements">
     <div class="container is-max-widescreen content">
       <h2 class="title">Acknowledgements</h2>
       <p>

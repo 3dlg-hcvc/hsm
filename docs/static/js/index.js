@@ -1,91 +1,43 @@
 window.HELP_IMPROVE_VIDEOJS = false;
 
-var INTERP_BASE = ["./static/images/test/our", "./static/images/test/mv", "./static/images/test/gd"];
-var INTERP_TEXT = ["Ours", "MVDream", "GraphDreamer"];
-var NUM_INTERP_FRAMES = 120;
-
-var interp_images = [];
-function preloadInterpolationImages() {
-  for (var x = 0; x < 3; x++) {
-    interp_images[x] = [];
-    for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-      var path = INTERP_BASE[x] + '/rgb_' + String(i) + '.png';
-      interp_images[x][i] = new Image();
-      interp_images[x][i].src = path;
-    }
-  }
-}
-
-function setInterpolationImage(i) {
-  $('#interpolation-image-wrapper').empty();
-  for (var x = 0; x < 3; x++) {
-    var image = interp_images[x][i];
-    image.ondragstart = function() { return false; };
-    image.oncontextmenu = function() { return false; };
-    
-    var imageContainer = $('<div>').addClass('image-container');
-    $(imageContainer).append(image);
-    var textContainer = $('<div>').addClass('text-container');
-    $(textContainer).text(INTERP_TEXT[x]);
-    $(imageContainer).append(textContainer);
-    $('#interpolation-image-wrapper').append(imageContainer);
-  }
-}
-
-
 $(document).ready(function() {
-    // Check for click events on the navbar burger icon
-    $(".navbar-burger").click(function() {
-      // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
-      $(".navbar-burger").toggleClass("is-active");
-      $(".navbar-menu").toggleClass("is-active");
+    // Copy BibTeX functionality
+    $('#copy-bibtex').click(function() {
+        const bibtexText = document.getElementById('bibtex-code').textContent;
+        const button = $(this);
 
+        navigator.clipboard.writeText(bibtexText).then(function() {
+            // Success feedback
+            const originalText = button.find('span:last').text();
+            const originalIcon = button.find('i').attr('class');
+
+            button.find('span:last').text('Copied!');
+            button.find('i').attr('class', 'fas fa-check');
+            button.addClass('is-success').removeClass('is-dark');
+
+            // Reset after 2 seconds
+            setTimeout(function() {
+                button.find('span:last').text(originalText);
+                button.find('i').attr('class', originalIcon);
+                button.removeClass('is-success').addClass('is-dark');
+            }, 2000);
+        }).catch(function(err) {
+            console.error('Failed to copy text: ', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = bibtexText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            // Success feedback for fallback
+            const originalText = button.find('span:last').text();
+            button.find('span:last').text('Copied!');
+            setTimeout(function() {
+                button.find('span:last').text(originalText);
+            }, 2000);
+        });
     });
-
-    var options = {
-			slidesToScroll: 1,
-			slidesToShow: 3,
-			loop: true,
-			infinite: true,
-			autoplay: false,
-			autoplaySpeed: 3000,
-    }
-
-		// Initialize all div with carousel class
-    var carousels = bulmaCarousel.attach('.carousel', options);
-
-    // Loop on each carousel initialized
-    for(var i = 0; i < carousels.length; i++) {
-    	// Add listener to  event
-    	carousels[i].on('before:show', state => {
-    		console.log(state);
-    	});
-    }
-
-    // Access to bulmaCarousel instance of an element
-    var element = document.querySelector('#my-element');
-    if (element && element.bulmaCarousel) {
-    	// bulmaCarousel instance is available as element.bulmaCarousel
-    	element.bulmaCarousel.on('before-show', function(state) {
-    		console.log(state);
-    	});
-    }
-
-    /*var player = document.getElementById('interpolation-video');
-    player.addEventListener('loadedmetadata', function() {
-      $('#interpolation-slider').on('input', function(event) {
-        console.log(this.value, player.duration);
-        player.currentTime = player.duration / 100 * this.value;
-      })
-    }, false);*/
-    preloadInterpolationImages();
-
-    $('#interpolation-slider').on('input', function(event) {
-      setInterpolationImage(this.value);
-    });
-    setInterpolationImage(0);
-    $('#interpolation-slider').prop('max', NUM_INTERP_FRAMES - 1);
-
-    bulmaSlider.attach();
 
 })

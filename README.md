@@ -1,10 +1,11 @@
-# HSM
+# HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation
 
-### HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation
+[![Project Page](https://img.shields.io/badge/Project-Website-5B7493?logo=googlechrome&logoColor=5B7493)](https://3dlg-hcvc.github.io/hsm/)
+[![Paper](https://img.shields.io/badge/arXiv-Paper-b31b1b?logo=arxiv&logoColor=b31b1b)](https://arxiv.org/abs/2503.16848)
 
 [Hou In Derek Pun](https://houip.github.io/), [Hou In Ivan Tam](https://iv-t.github.io/), [Austin T. Wang](https://atwang16.github.io/), [Xiaoliang Huo](), [Angel X. Chang](https://angelxuanchang.github.io/), [Manolis Savva](https://msavva.github.io/)
 
-[Page](https://3dlg-hcvc.github.io/hsm/) | [Paper](http://arxiv.org/abs/2503.16848)
+![HSM Overview](docs/static/images/teaser.png)
 
 ## Citation
 Please cite our work if you find it helpful:
