@@ -1,0 +1,132 @@
+motifs: >-
+  Different motifs have different unique object input constraints. 
+  Choose the most appropriate motif for the given objects based on the number of unique object types:
+
+  ### Single Object Motifs (1 Unique Object Type)
+    `stack`:
+      Description: Vertically stacks identical objects with uniform spacing along the y-axis.
+      Example: "a stack of five books"
+      Constraints: 1 unique object type.
+    `pile`:
+      Description: Arranges identical objects in a randomized pile configuration with customizable offsets and rotations.
+      Example: "a pile of three towels with random orientations"
+      Constraints: 1 unique object type.
+    `row`:
+      Description: Places identical objects in a horizontal line with configurable spacing and incremental adjustments.
+      Example: "a row of three chairs evenly spaced"
+      Constraints: 1 unique object type.
+    `grid`:
+      Description: Arranges identical objects in a 2D grid pattern with uniform spacing in rows and columns.
+      Example: "a grid of 2x2 chairs"
+      Constraints: 1 unique object type.
+    `pyramid`:
+      Description: Arranges identical objects in a pyramid shape with fewer objects in higher layers.
+      Example: "a pyramid of six books"
+      Constraints: 1 unique object type.
+    `wall_grid`:
+      Description: Places identical objects in a grid pattern on a wall with uniform spacing and wall alignment.
+      Example: "a 2x3 grid of paintings on a wall"
+      Constraints: 1 unique object type. Requires wall placement.
+    `wall_vertical_column`:
+      Description: Arranges identical objects in a single vertical column on a wall.
+      Example: "three vertically aligned mirrors on a wall"
+      Constraints: 1 unique object type. Requires wall placement.
+    `wall_horizontal_row`:
+      Description: Arranges identical objects in a single horizontal row on a wall.
+      Example: "a row of three paintings evenly spaced on a wall"
+      Constraints: 1 unique object type. Requires wall placement.
+
+  ### Two Object Motifs (2 Unique Object Types)
+    `face_to_face`:
+      Description: Places two objects in front and facing each other.
+      Example: "a chair in front of a desk"
+      Constraints: 2 unique object types.
+    `bed_setup`:
+      Description: Places a bed against a wall, flanked by one or two objects of a second type (usually nightstands).
+      Example: "a bed with nightstands on each side"
+      Constraints: 2 unique object types (bed, side object). Requires wall alignment for the bed.
+    `surround`:
+      Description: Places objects of a second type (e.g., chairs) around the perimeter of a primary round object (e.g., round table).
+      Example: "chairs surrounding a round table"
+      Constraints: 2 unique object types (central object, surrounding object). Central object assumed round.
+    `rectangular_perimeter`:
+      Description: Arranges objects of a second type (e.g., chairs) around the perimeter of a primary rectangular object (e.g., rectangular table).
+      Example: "four chairs arranged around a dining table"
+      Constraints: 2 unique object types (central object, surrounding object). Central object assumed rectangular.
+    `left_of`:
+      Description: Positions a secondary object immediately to the left (from primary's perspective) of a primary object.
+      Example: "a fork to the left of a knife in place setting"
+      Constraints: 2 unique object types.
+    `on_top`:
+      Description: Stacks a secondary object directly on top of a primary object.
+      Example: "a cup on top of a saucer"
+      Constraints: 2 unique object types. Note: Use cautiously. Bottom object typically larger. Prefer surface placement if 'on top' is ambiguous.
+    `in_front_of`:
+      Description: Positions a secondary object directly in front of a primary object (along the primary's forward-facing z-axis).
+      Example: "a keyboard in front of a monitor"
+      Constraints: 2 unique object types.
+    `next_to`:
+      Description: Places a secondary object adjacent to a primary object. Allow for both wall-aligned and non-wall-aligned arrangements.
+      Example: "a bookcase next to a sofa chair"
+      Constraints: 2 unique object types. 
+
+  ### Three Object Motifs (Max 3 Unique Object Types)
+    `on_each_side`:
+      Description: Places secondary/tertiary objects symmetrically on both sides of a central primary object.
+      Example: "a fork and a knife on each side of a plate"
+      Constraints: Handles 2 or 3 unique object types, maximum 3 objects in total. 
+                  Case 1 (3 unique types): Primary (e.g., plate), Secondary (e.g., fork), Tertiary (e.g., knife).
+                  Case 2 (2 unique types): Primary (e.g., bed), Secondary (e.g., nightstand - same object placed on both sides). 
+
+constraints:
+  stack:
+    min_unique_types: 1
+    max_unique_types: 1
+  pile:
+    min_unique_types: 1
+    max_unique_types: 1
+  row:
+    min_unique_types: 1
+    max_unique_types: 1
+  grid:
+    min_unique_types: 1
+    max_unique_types: 1
+  pyramid:
+    min_unique_types: 1
+    max_unique_types: 1
+  wall_grid:
+    min_unique_types: 1
+    max_unique_types: 1
+  wall_vertical_column:
+    min_unique_types: 1
+    max_unique_types: 1
+  wall_horizontal_row:
+    min_unique_types: 1
+    max_unique_types: 1
+  bed_setup:
+    min_unique_types: 2
+    max_unique_types: 2
+  surround:
+    min_unique_types: 2
+    max_unique_types: 2
+  rectangular_perimeter:
+    min_unique_types: 2
+    max_unique_types: 2
+  left_of:
+    min_unique_types: 2
+    max_unique_types: 2
+  on_top:
+    min_unique_types: 2
+    max_unique_types: 2
+  in_front_of:
+    min_unique_types: 2
+    max_unique_types: 2
+  next_to:
+    min_unique_types: 2
+    max_unique_types: 4
+  on_each_side:
+    min_unique_types: 2
+    max_unique_types: 3 
+  face_to_face:
+    min_unique_types: 2
+    max_unique_types: 2

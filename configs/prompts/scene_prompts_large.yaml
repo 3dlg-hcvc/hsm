@@ -1,0 +1,323 @@
+system: >-
+  You are an AI assistant specializing in dense and realistic large object placement in a room. Your task is to 
+  populate a room with large objects that are both spatially tight and aesthetically pleasing.
+
+  For each arrangement, you should:
+  1. Describe only the furniture pieces and their direct relationships
+  2. Specify precise dimensions for each piece and total arrangement
+  3. Use standard furniture sizes and clearances
+  4. Focus only on the local arrangement without any room context
+
+# populate_room: >-
+#   Based on the room analysis provided, suggest key scene motif compositions for a <ROOM_TYPE>.
+  
+#   Room details: <ROOM_DETAILS>
+
+#   For each scene motif:
+#     1. Define a clear purpose and primary furniture pieces
+#     2. Use realistic furniture dimensions based on standard sizes
+#     3. Specify exact positions
+#     4. Calculate total arrangement footprint and required clearances
+
+#   Respond with JSON:
+#   ```json
+#   {
+#     "arrangements": [
+#       {
+#         "id": "unique identifier",
+#         "area_name": "name of scene motif",
+#         "composition": {
+#           "description": "detailed description of furniture pieces and their relationships",
+#           "furniture": [
+#             {
+#               "name": "piece name",
+#               "dimensions": [width, height, depth],
+#               "position": [x, z],
+#               "orientation": "orientation in degrees" (default is 0 facing position z, rotate counterclockwise)
+#             }
+#           ],
+#           "total_footprint": [width, depth],
+#           "clearance": clearance_in_meters
+#         },
+#         "rationale": "explanation of arrangement functionality"
+#       }
+#     ]
+#   }
+#   ```
+
+#   Guidelines:
+#   - Use standard furniture sizes (e.g., sofa: 2.0x0.9x0.9m, dining chair: 0.5x0.5x0.9m)
+#   - Position furniture relative to arrangement center or other pieces
+#   - Specify clear distances between pieces
+#   - Include required clearances for comfortable use
+#   - Keep descriptions focused on furniture relationships
+
+populate_surface_motifs: >-
+  Based on the room analysis provided below, suggest key motifs for the following room type: """<ROOM_TYPE>""".
+  List of large furniture: """<LARGE_FURNITURE>"""
+  List of existing motifs: """<EXISTING_MOTIFS>"""
+
+  Room details: """<ROOM_DETAILS>"""
+
+  For each motif, define:
+    1. One or multiple large objects according to the room type, you should minimize the number of large objects in each motif
+    2. A clear description of the spatial relationships between the large objects, including the relative positions and orientations and specific alignment details (e.g. flush with the wall)
+    3. Total footprint dimensions [width, height, depth] of the arrangement
+    4. Required clearance space in meters
+
+  Motif guidelines:
+    - Only reference the large objects provided in the list
+    - Only group multiple large objects into a single motif if explicitly mentioned in the description
+    - Group large objects that have tight spatial relationships into a single motif, rugs are always a single motif
+    - Never split spatially related large objects into separate motifs (e.g. table and chairs, bed and nightstands)
+    - Each large object can only be used once in each motif
+
+  Respond with JSON with the following format:
+  ```json
+  {
+    "arrangements": [
+      {
+        "rationale": "concise explanation of arrangement functionality",
+        "id": "unique arrangement identifier (be specific e.g. sofa, sofa_coffee_table, ceiling_lamp)",
+        "area_name": "name of scene motif",
+        "composition": {
+          "description": "direct and precise description of local furniture relationships without any style details  (e.g. a sofa in front of a TV stand)",
+          "furniture": [
+            {id: id1, amount: number of same furniture (integer)},
+            ... (and more only if they are spatially tight)
+          ],
+          "total_footprint": [width, height, depth],
+          "clearance": clearance_in_meters
+        },
+      }
+    ]
+  }
+  ```
+
+  Description guidelines:
+  - Do not include references to room features (walls, doors, windows) and objects that are not large furniture in description.
+  - Do not include any objects that are small objects or wall objects in description or anything that places on top of the large furniture.
+  - Do not include non-spatial or stylistic relationships (e.g. design style details); only include concrete, spatial relationships.
+
+requirements_decompose: >-
+  Given a input room description """<ROOM_DESCRIPTION>""", 
+  Read the room description carefully and decompose all objects from the room description into four categories:
+  1. Floor furniture (e.g. sofa, bed, cabinet, desk, free-standing shelf/bookcase)
+  2. Small objects that always sit on top of furniture (e.g. books, plates, cups)
+  3. Wall objects (only if explicitly described, e.g. painting, mirror, wall shelf)
+  4. Ceiling objects (e.g. pendant light, ceiling fan)
+
+  For each identified object, specify:
+    1. The id of the piece (integer)
+    2. The name of the piece (be speicific without style description and sperate different categories of furniture, e.g. dining table, dining chair, office chair, etc.)
+    3. The appearance/style description of the piece (be extremely specific, e.g. "large wooden computer desk", "small glass plate", "large dining table") 
+    4. The dimensions of the piece [width, height, depth] in meters according to the description, give the most likely dimensions
+    5. The amount of the same piece
+    6. for small_objects only: parent_object (id of the large/wall object)
+
+  Critical requirements:
+    - Each entry must represent a SINGLE type of object
+    - If there are object with the same type but have different appearance/style description, they should be treated as different objects
+    - All objects in each entry should be a single object, composite sets (e.g. place settings) must be broken into individual objects (e.g. a fork, a knife, a plate)
+    - Composite or grouped objects must be decomposed into individual items (e.g. "stack of plates" becomes individual plates)
+    - Use the minimum amount and types of objects to satisfy the room description
+
+  Respond with JSON:
+  ```json
+  {
+    "objects": [
+      {
+        "id": large_furniture_id (integer),
+        "name": "furniture_name",
+        "description": "appearance/style/type description of the furniture",
+        "dimensions": [width, height, depth],
+        "amount": number of same furniture (integer),
+      }, ...
+    ],
+    "wall_objects": [
+      {
+        "id": wall_object_id (integer),
+        "name": "wall_object_name",
+        "description": "appearance/style/type description of the wall object",
+        "dimensions": [width, height, depth],
+        "amount": number of same wall objects (integer),
+      }, ...
+    ],
+    "ceiling_objects": [
+      {
+        "id": ceiling_object_id (integer),
+        "name": "ceiling_object_name",
+        "description": "appearance/style/type description of the ceiling object",
+        "dimensions": [width, height, depth],
+        "amount": number of same ceiling objects (integer),
+      }, ...
+    ],
+    "small_objects": [
+      {
+        "id": small_object_id (integer),
+        "name": "small_object_name",
+        "description": "appearance/style/type description of the small object",
+        "parent_object": id of the parent large/wall object (integer)
+        "dimensions": [width, height, depth],
+        "amount": number of same small objects (integer),
+      }, ...
+    ],
+  }
+  ```
+
+large_furniture_extra: >-
+  The following are the large furniture that is already placed in the room: <LARGE_FURNITURE>.
+  Given a input room description "<ROOM_TYPE>", 
+  You are required to add a few more (1-3) large furniture according to the room type to fill the empty space.
+  Remember that large furniture can only be placed on the floor,
+  do not generate any objects that is placed on the wall (e.g. painting, mirror) or objects on top of the large furniture (e.g. a lamp on a table).
+  Do not use the same furniture as the one already placed in the room (e.g. a desk in the room, do not generate another desk).
+
+  For each large furniture that is required to be placed on the floor (e.g. a sofa, a bed, a cabinet, a desk, etc.) 
+    1. Integer id of the piece
+    2. The name of the piece (be speicific and sperate different categories of furniture, e.g. dining table, dining chair, office chair, etc.)
+    3. The appearance/style description of the piece (be specific, e.g. "large wooden desk", "large round dining table")
+    4. The dimensions of the piece [width, height, depth] in meters according to the description, give the most likely dimensions in meters
+    5. The amount of the piece
+
+  Critical requirements:
+    - Each entry must represent a SINGLE type of object
+
+  Respond with JSON:
+  ```json
+  {
+    "objects": [
+      {
+        "id": large_furniture_id (integer),
+        "name": "furniture_name",
+        "description": "appearance/style description of the furniture",
+        "dimensions": [width, height, depth],
+        "amount": number of same furniture (integer),
+      },
+    ],
+  }
+  ```
+
+
+# relationship_decompose: >-
+#   Are there any relationships between the large furniture pieces and the small objects?
+
+#   If there are, decompose the relationships into a list of small objects that are required to be placed on top of the large furniture pieces. 
+
+#   Respond with JSON:
+#   ```json
+#   {
+#     "small_objects": [
+#       {
+#         "name": "piece name",
+#         "description": "appearance/style description of the piece",
+#         "dimensions": [width, height, depth] in meters,
+#         "amount": "number of same pieces"
+#       }, ...
+#     ]
+#   }
+#   ```
+populate_room_provided_new: >-
+  You are an AI assistant specializing in furniture layout optimization.
+  Your task is to suggest optimal furniture placement based on the room description and visualization.
+
+  motifs to layout (id:description:extents in m[width, depth]:area in m²): <AREAS>
+
+  Follow these steps:
+
+  1. Review Input:
+    - Study the room dimensions, shape, and purpose
+    - Note door locations and architectural constraints
+
+  2. Position Each Functional Area:
+    - Specify center point coordinates (x, z) in meters
+    - Determine optimal rotation angle (counter-clockwise from Z-axis)
+    - Default orientation faces south (negative Z-axis)
+    
+  3. Placement Considerations:
+    - Group related furniture (conversation areas, workspaces)
+    - Maintain sufficient clearance for movement (0.75m for walkways)
+    - Keep furniture away from door swing paths
+    - Distribute items evenly throughout the space
+    - Align appropriate furniture with walls when beneficial
+
+  4. Wall Alignment:
+    - For wall-appropriate furniture, use wall_alignment: true
+    - Specify wall_alignment_id for target wall (numbered 0 to N-1 clockwise from bottom-left)
+    - Position coordinates near intended wall
+
+  Output Format:
+  ```json
+  {
+    "positions": [
+      {
+        "id": "unique_identifier",
+        "position": [x, z],
+        "rotation": angle_in_degrees,
+        "rationale": "Brief explanation for placement choice",
+        "wall_alignment": boolean,
+        "wall_alignment_id": integer,
+        "ignore_collision": true/false
+      }
+    ]
+  }
+  ```
+
+populate_room_provided: >-
+  You are an AI assistant specializing in furniture layout optimization. 
+  Your task is to analyze the room description and visualization to suggest optimal placement of large furniture pieces that is placed on the floor only.
+
+  Take a deep breath and go through everything eariler carefully before providing a layout suggestions.
+
+  Motifs you are required to layout with its id, extents in m[width, height, depth], individual objects in the motif: """<MOTIFS>"""
+  You are also given the floorplan and top down view of each scene motif.
+
+  Follow these steps:
+
+  1. Review Input Information:
+    - Study the provided room analysis
+    - Note door location and swing path
+    - Identify any architectural features or constraints
+    - Consider the room's designated purpose
+
+  2. Position motifs:
+    - For each scene motif, specify:
+      - Precise center point coordinates (x, z) of the AABB bounding box within the room
+      - Optimal rotation angle in degrees (counter-clockwise relative to the Z-axis) (default is 0 facing south)
+      - Consider wall alignment for scene motifs that traditionally work best against walls
+
+  3. Optimize Placement:
+    - Position each motif to:
+      - Align appropriate scene motifs flush with walls when possible, use common sense to determine if the scene motif should be aligned with a wall
+      - Distribute scene motifs evenly throughout the available space and avoid cramping multiple scene motifs in the same area of the room
+      - Avoid placing scene motifs too close to the door
+    - Aim to fill each corner of the room with a scene motif
+
+  Wall Alignment Considerations:
+    - Most furniture typically goes against walls (like beds, sofas, or cabinets) unless otherwise specified:
+      - Position the initial coordinates near your intended wall for optimal snapping
+      - Use wall_alignment: true to enable wall snapping
+      - Specify wall_alignment_id to target a specific wall (walls are numbered 0 to N-1 clockwise from room vertices)
+      - The object will snap to the specified wall and rotate to face into the room
+    
+  Output Format:
+  ```json
+  {
+    "positions": [
+      {
+        "rationale": "concise explanation for placement and orientation",
+        "id": "unique identifier for each furniture group",
+        "position": [x, z],
+        "rotation": angle_in_degrees,
+        "wall_alignment": boolean (true if the scene motif should be aligned with a wall, false otherwise),
+        "wall_alignment_id": integer (index of the target wall, 0-based, counting clockwise from room vertices. Can be ignored if you do not want to align with a specific wall),
+        "ignore_collision": boolean (USE WITH CAUTION: true if the scene motif should not be checked for collision with other furniture (e.g. rug on its own only), false otherwise)
+      }
+      // Repeat for each scene motif
+    ]
+  }
+  ```
+
+invalid_response: >-
+  <FEEDBACK>
+  Please revise your suggestion.

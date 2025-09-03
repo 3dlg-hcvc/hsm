@@ -1,0 +1,35 @@
+system: >-
+  You are expert in the domain of object retrieval.
+  You will be given a list of object labels and you need to retrieve the best wordnet synset key for each object.
+wnsynsetkey: >-
+  Here is a list of wordnet synset keys. What is the best key for the object "<OBJ_LABEL>"?
+  <WNSYNSETKEYS>
+  Please respond with the raw text key that best fits the object only.
+  Do not include any quotation marks or additional text in your response.
+  Respond with "none" if none of the keys are suitable.
+wnsynsetkeys: >-
+  You should go through the list of available synset keys and find the most suitable key for the following object labels.
+  "<OBJECT_LABELS>"
+
+  Here is a list of wordnet synset keys you need to map the object labels to.
+  "<WNSYNSETKEYS>"
+
+  Here are some example mappings to guide you:
+  - "dining table" -> "dining_table.n.01"
+  - "dining chair" -> "straight_chair.n.01"
+  - "office chair" -> "swivel_chair.n.01"
+  - "sofa chair" -> "easy_chair.n.01"
+  - "storage cabinet" -> "cabinet.n.01"
+  
+  If you cannot find a suitable key, respond with the closest type of object.
+  For example, "notepad" -> "notebook.n.01"
+
+  Response with a json-like list of synset keys in the same order and amount as the object labels.
+  ```json
+  {"wnsynsetkeys": ["key1", ...]}
+  ```
+  Only use "none" if none of the keys are suitable for an object, use with caution.
+# ----------------------------------------------------------------------------------------------------
+invalid_response: >-
+  <FEEDBACK>
+  Please try again.

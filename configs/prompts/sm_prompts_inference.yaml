@@ -1,0 +1,248 @@
+system: >-
+  You are an expert in Python specialized in using meta-programs to generate scene motifs, arrangements of multiple objects in a room.
+  
+  Your role is to:
+  1. Reason about the spatial relationships between objects
+  2. Generate precise object arrangements using meta-programs
+  3. Handle both atomic and compositional arrangements
+  4. Ensure consistent object orientations and spacing
+
+  All arrangements are defined within a right-handed 3D coordinate system where:
+  - X-axis: Negative = LEFT, Positive = RIGHT (width plane)
+  - Y-axis: Negative = DOWN, Positive = UP (height plane)
+  - Z-axis: Negative = TOWARDS viewer, Positive = AWAY from viewer (depth plane)
+  
+  Object Positioning:
+  - Object positions refer to their 2D center in X-Z space (geometric center at ground level)
+  - Y coordinate represents the bottom of the object (height starts from Y=0)
+
+  Core principles:
+  1. Use clear spatial relationships and appropriate clearances
+     - Maintain sensible spacing between objects from the given object info (0.3-0.5m for large objects)
+     - Ensure access paths for human interaction (e.g. suitable distance between sofa and coffee table)
+  2. Position objects logically relative to each other
+     - Respect functional relationships (e.g., chairs face tables, nothing should be placed in front of a bookshelf, cup should be on top of a plate)
+     - Remember that the arrangement is for a room, you should consider the relationship between the objects (e.g. nothing should place in front of a TV stand)
+     - Consider the size and the default orientation of the objects when positioning them
+
+  Egocentric view: You (the observer) are looking from negative Z towards positive Z. Objects with larger positive Z coordinates are closer to you.
+  All spatial relationships (left, right, front, back) are described relative to your perspective as the viewer.
+
+  Placement Rules:
+  - Horizontal Positioning: Use X-axis offsets for left/right placement
+  - Depth Positioning: Use Z-axis offsets for front/back placement
+  - Vertical Positioning: Use Y-axis only for explicit height/stacking
+
+  Default Object Orientation:
+  - All objects initially towards the viewer (towards +z direction)
+  - Rotate around Y-axis to change facing direction
+  - Example: 180° rotation makes object face away from viewer
+
+  Units and Measurements:
+  - All dimensions (x, y, z) are in meters
+  - All rotations are in degrees (Y-axis)
+  - All objects maintain y=0 unless stacking/height required
+
+##############################################################################
+# describe_meta_program: >-
+#   Here is a meta-program that generalizes a spatial arrangement of type "<MOTIF_TYPE>":
+#   ```python
+#   <META_PROGRAM>
+#   ```
+#   Please analyze the meta-program by answering these questions:
+#   1. What is the main purpose of this meta-program?
+#   2. What are the key steps in how it creates the spatial arrangement?
+#   3. For each argument:
+#      - What does it control in the arrangement?
+#      - What are its expected values/types?
+#      - How does it affect the final output?
+#   4. Are there any important constraints or relationships between the arguments?
+#   5. What would be an example of a typical function call?
+
+#   Please provide your analysis in a clear, structured format in a few sentences.
+##############################################################################
+inference_hierarchical: >-
+  From the observations you made in the previous step, here is a meta-program that generalizes a spatial arrangement of type "<MOTIF_TYPE>":
+  ```python
+  <META_PROGRAM>
+  ```
+  And here is a description of a spatial motif of the same type:
+  """<DESCRIPTION>"""
+  Object info (name, half-sizes in meters) """<FURNITURE_INFO>"""
+  
+  """<ARRANGEMENT_CONTEXT>"""
+
+  Your task is to call the meta-program above with the necessary arguments to recreate the spatial motif described in the description as closely as possible.
+  Read the docstring and comments in the meta-program to understand how to use it.
+  Refer to the example function call in the meta-program documentation to understand how the meta-program should be called, if available.
+  Use common sense to infer the arguments for ambiguous arguments, such as object dimensions, positions, and rotations.
+  When in doubt, refer back to the example function call in the meta-program documentation.
+  I will run a postprocessing step to refine the spatial motif after you provide the function call to me.
+
+  Technical Details:
+  - You must use the same object names and half-sizes from the object info
+  - All dimensions in meters, rotations in degrees
+  - Y-axis (vertical) rotations for objects facing
+  - All objects are normalized to face the same direction by default (facing towards +z axis)
+  - Place objects with appropriate spacing and avoid intersection based on their half sizes
+  - The world is in a right-handed coordinate system, that is, when looking from the front, the x-axis is to the right, the y-axis is up, and the z-axis is towards the viewer.
+
+  Write a few sentences on how you will generate a function call to the meta-program to create the arrangement described and the reasoning behind particular arguments.
+  Then respond with a single function call that implements the arrangement described wrapped in a code block.
+  ```python
+  ```
+
+##############################################################################
+# inference_mid_level: >-
+#   <FEEDBACK>
+#   Here is a meta-program that generalizes a spatial arrangement of type "<MOTIF_TYPE>":
+
+#   ```python
+#   <META_PROGRAM>
+#   ```
+
+#   And here is a description of a compositional arrangement:
+#   <DESCRIPTION>
+#   with compositional info: <COMPOSITIONAL_INFO>
+
+#   The following subarrangements are pre-generated:
+#   sub_arrangements=[<SUB_ARRANGEMENTS>]
+#   with their corresponding half sizes:
+#   [<HALF_SIZES>]
+
+#   You are required to call the meta-program with the necessary arguments to create the compositional arrangement described in the description as closely as possible, think step by step.
+#   Use the compositional info as guidance for the arguments for the meta-program, e.g. to use the subarrangements as objects.
+#   Use the generated subarrangements in the meta-program by accessing `sub_arrangements[i]` as a object replacing the label. For example:
+
+#   ```python
+#   create_in_front_of_motif(primary_object_type=sub_arrangements[0],...)
+#   ```
+
+#   You still need to respect the types of the meta-program, i.e. the arguments you infer must be of the types specified in the meta-program.
+
+#   Follow these guidelines:
+#   1. Read the previous conversation and the information in the meta-program to understand how to use it.
+#   2. Refer to the example function call in the meta-program documentation, if available.
+#   3. Use common sense to infer arguments for ambiguous parameters (e.g., dimensions, positions, rotations).
+#   4. When in doubt, refer back to the example function call in the meta-program documentation.
+#   5. Ensure the arguments make the new compositional arrangement physically possible without intersecting or floating objects if applicable.
+#   6. I will run a postprocessing step to refine the compositional arrangement after you provide the function call to me.
+#   7. Assume objects are larger; space them out to avoid intersection.
+#   8. The label should not begin with an article, such as "a" (e.g., "a bowl").
+#   9. Remember that x, y, z dimensions are in meters and rotation angles are in degrees.
+#   10. +x is to the right, +y is up, and +z is front (towards the viewer).
+#   11. Most object rotations are around the y-axis, as it is the vertical axis.
+
+#   Respond with only the function call and inferred arguments as code. Do not include any explanations or additional text.
+
+##############################################################################
+# pre_inference: >-
+#   You are given a description of a spatial motif and a meta-program that generalizes a spatial arrangement of type "<MOTIF_TYPE>".
+#     ```python
+#   <META_PROGRAM>
+#   ```
+#   And here is a description of a spatial motif of the same type:
+#   <DESCRIPTION>
+  
+#   What are considerations you would make before calling the meta-program to generate the spatial motif as closely as possible?
+#   Please respond with a few sentences. Think step by step
+#   Remember the default orientation is all objects front face is parallel to the x-y plane and face towards +z axis (towards the viewer/camera), rotate objects as needed.
+
+# classify: >-
+#   Based on your observations, classify the spatial motif of objects "<DESCRIPTION>" into one of the motif types.
+#   Respond with json format.
+#   {
+#     "motif_type": "motif_type"
+#   }
+
+inference: >-
+  <FEEDBACK>
+  From the observations you made in the previous step, here is a meta-program that generalizes a spatial arrangement of type "<MOTIF_TYPE>":
+  ```python
+  <META_PROGRAM>
+  ```
+  And here is a description of a spatial motif of the same type:
+  """<DESCRIPTION>"""
+  And here is the object information (name, half-sizes in meters): 
+  """<FURNITURE_INFO>"""
+  You need to use the exact object names as labels and the half size of the object to create the function call
+  Use the half sizes of each object to help you determine the distance and offsets between the objects,
+
+  The default orientation is all objects front face is parallel to the x-y plane and face towards +z axis (towards the viewer/camera). 
+  Remember to rotate objects to face each other in a natural way - for example, chairs should face tables they are paired with,
+  Objects should be oriented in a way that makes sense for their typical usage and interaction patterns.
+
+  Your task is to call the meta-program with the necessary arguments to recreate the spatial motif described in the description as closely as possible.
+  Read the docstring and comments in the meta-program to understand how to use it.
+  Refer to the example function call in the meta-program documentation to understand how the meta-program should be called, if available.
+  Use common sense to infer the arguments for ambiguous arguments, such as object dimensions, positions, and rotations.
+  When in doubt, refer back to the example function call in the meta-program documentation.
+  Ensure the arguments make the new spatial motif physically possible without intersecting or floating objects and make the objects contact tightly, if applicable.
+  I will run a postprocessing step to refine the spatial motif after you provide the function call to me.
+  Remember that x, y, z dimensions are in meters and rotation angles are in degrees.
+  Most object rotations hence are around the y-axis, as it is the vertical axis.
+  Assume the objects are large so make sure they are spaced out enough to not intersect.
+  When placing objects, consider how human would organize them in real life.
+  For example, large objects are usually placed at the bottom and smaller objects on top.
+  Please respond with code - the function call with the inferred arguments only.
+
+  Only responsd with one function call.
+
+inference_feedback: >-
+  I could not run the meta-program using the function call you provided.
+  <FEEDBACK>
+  Please try again.
+
+##############################################################################
+make_tight: >-
+  Given a description of a spatial arrangement,
+  """<DESCRIPTION>"""
+  Determine how common it is for the individual objects to be placed in tight contact with each other in this type of motif.
+  Consider whether this motif describes a decorative arrangement or a functional arrangement in real life.
+  A decorative arrangement is one that is intentionally designed to be arranged in a specific way for aesthetic purposes, making tight contact less common.
+  e.g. when having a coffee table with a sofa, the coffee table is not typically placed in tight contact with the sofa.
+  For functional arrangements, use common sense to reason about whether the objects are typically placed in tight contact in real life. 
+  e.g. when placing a cup on top of a plate, they are typically touching each other.
+
+  Respond in JSON format. The JSON should include:
+  - "touch_assessment": An object containing:
+      - "reasoning": A brief explanation (2-3 sentences) for your touch probability assessment.
+      - "touch_probability": A float between 0 and 1 representing the probability that objects in this motif type are typically in tight contact. 
+      1 means they are always in tight contact, 0 means they are never in tight contact.
+
+  ```json
+  {
+    "touch_assessment": {
+      "reasoning": "<reasoning_string>",
+      "touch_probability": <float_X>,
+    },
+  }
+  ```
+##############################################################################
+validate: >-
+  Given a description of a spatial arrangement,
+  """<DESCRIPTION>"""
+  analyze the 2D top down and front view of the arrangement and validate if the arrangement is correct.
+
+  Remember that the arrangement are placed in a room, use common sense to determine if the arrangement is correct.
+  Give a score from 0 to 1, where 0 is completely incorrect and 1 is completely correct.
+  If the arrangment is partially correct, depend on the amount of objects in the arrangement, give a score between 0 and 1.
+  e.g. if there is only 2 objects, give a score of 0.5 if 1 object is in the correct position and orientation.
+
+  You should give feedback on what is wrong with the arrangement and provide a few sentences on how to fix it.
+  Try to be as specific as possible and give specific coordinates using the 2d top down and front view with x, y, z coordinates.
+
+  Respond in JSON format. The JSON should include:
+  - "feedback": Your detailed feedback on the arrangement and possible fixes.
+  - "correct": Your validation score (0 to 1).
+
+  The final JSON structure should be:
+  {
+    "feedback": "<feedback_string>",
+    "correct": <float_score>,
+  }
+# "back_side": <north, south, east, west> (the side of the arrangement that is facing away from the viewer)
+##############################################################################
+invalid_response: >-
+  <FEEDBACK>
+  Please try again.

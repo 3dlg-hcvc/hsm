@@ -1,0 +1,133 @@
+system: >-
+  You are an AI assistant specializing in ceiling object placement for interior design. 
+  Your task is to determine optimal placement of ceiling objects like pendant lights, ceiling fans, etc.
+  For each ceiling object, you need to specify precise ceiling positioning, 
+  considering existing furniture, doors, windows.
+
+  Your placement decisions should be:
+  1. Functional - objects serve their purpose effectively
+  2. Aesthetically pleasing - objects complement the room and furniture
+  3. Practical - objects don't overlap with blocked areas or existing features
+  4. Balanced - objects are distributed sensibly across available walls
+
+
+populate_surface_motifs: >-
+  Suggest ceiling object arrangements for a <ROOM_TYPE>.
+  List of ceiling objects to place: <CEILING_OBJECTS>
+
+  Room vertices: <ROOM_VERTICES>
+
+  For each ceiling object, define an arrangement that:
+    1. One or multiple ceiling objects according to the room type, you should minimize the number of ceiling objects in each arrangement
+    2. Realistic dimensions and clear spatial relationships between pieces
+    3. Total footprint dimensions [width, height, depth]
+    4. Required clearance space in meters
+
+  Guidelines for motifs:
+    - Only reference the ceiling objects provided in the list
+    - Only group multiple ceiling objects into a single motif if explicitly mentioned in the description
+    - Group ceiling objects that have tight spatial relationships into a single motif 
+    - Each ceiling object can only be used once in each motif
+
+  Respond with JSON with the following format:
+  ```json
+  {
+    "arrangements": [
+      {
+        "rationale": "concise explanation of arrangement functionality",
+        "id": "unique arrangement identifier (be specific e.g. ceiling_fan_1, ceiling_light_1)",
+        "area_name": "name of scene motif",
+        "composition": {
+          "description": "direct and precise description of this ceiling object",
+          "furniture": [
+            {id: id1, amount: 1}
+          ],
+          "total_footprint": [width, height, depth],
+          "clearance": clearance_in_meters
+        },
+      }
+    ]
+  }
+  ```
+
+  Description guidelines:
+  - Do not include references to room features (walls, doors, windows) and objects that are not ceiling objects in description.
+  - Do not include any objects that are small objects or wall objects in description or anything that places on top of the large furniture.
+  - Do not include non-spatial or stylistic relationships (e.g. design style details); only include concrete, spatial relationships.
+
+
+ceiling_objects_extra: >-
+  The following are the ceiling objects that is already placed in the room: """<CEILING_OBJECTS>"""
+  Given a input room description """<ROOM_TYPE>""", 
+  You are required to add 1 ceiling objects (e.g. a pendant light, a ceiling fan, etc.) according to the room type to fill the empty space.
+  Remember that ceiling objects can only be hang from the ceiling,
+  Do not use the same ceiling objects as the one already placed in the room (e.g. a pendant light in the room, do not generate another pendant light).
+
+  For each ceiling object that is required to be placed on the ceiling (e.g. a pendant light, a ceiling fan, etc.) 
+    1. Integer id of the piece
+    2. The name of the piece (be speicific and sperate different categories of furniture, e.g. dining table, dining chair, office chair, etc.)
+    3. The appearance/style description of the piece (be specific, e.g. "large wooden desk", "glass plate")
+    4. The dimensions of the piece [width, height, depth] in meters according to the description, give the most likely dimensions in meters
+    5. The amount of the piece
+
+  Critical requirements:
+    - Each entry must represent a SINGLE type of object
+
+  Respond with JSON:
+  ```json
+  {
+    "ceiling_objects": [
+      {
+        "id": ceiling_object_id (integer),
+        "name": "ceiling_object_name",
+        "description": "appearance/style description of the ceiling object",
+        "dimensions": [width, height, depth],
+        "amount": number of same ceiling objects (integer),
+      },
+    ],
+  }
+  ```
+
+populate_room_provided: >-
+  You are an AI assistant specializing in furniture layout. 
+  Your task is to analyze the room description and visualization to suggest optimal placement of ceiling objects.
+
+  Take a deep breath and go through everything eariler carefully before providing a layout suggestions.
+
+  Scene motifs you are required to layout (id:description:extents in m[width, depth]:area in m^2): <AREAS>
+  You are also given the floorplan and top down view of each scene motif you are required to populate.
+
+  Follow these steps:
+
+  1. Review Input Information:
+    - Study the provided room analysis
+    - Note door location and swing path
+    - Identify any architectural features or constraints
+    - Consider the room's designated purpose
+
+  2. Position Scene Motifs:
+    - For each scene motif, specify:
+      * Precise center point coordinates (x, z) of the AABB bounding box within the room
+      * Optimal rotation angle in degrees (counter-clockwise relative to the Z-axis) (default is 0 facing south)
+      * Consider wall alignment for scene motifs that traditionally work best against walls
+    
+  Output Format:
+  ```json
+  {
+    "positions": [
+      {
+        "id": "unique identifier for each furniture group",
+        "position": [x, z],
+        "rotation": angle_in_degrees,
+        "rationale": "Detailed explanation for placement and orientation",
+        "ignore_collision": true/false
+      }
+      // Repeat for each furniture group
+    ]
+  }
+  ```
+
+
+invalid_response: >-
+  <FEEDBACK>
+  Please revise your suggestion.

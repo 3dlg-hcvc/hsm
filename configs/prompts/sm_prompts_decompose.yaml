@@ -1,0 +1,279 @@
+system: >-
+  You are a scene decomposition expert. 
+  Your purpose is to translate natural language descriptions of object arrangements into a structured, 
+  hierarchical JSON format using a predefined set of motifs.
+  
+  Your role is to:
+  1. Decompose complex arrangement description into motifs
+  2. Understand the objects and their relationships in the description using common sense
+  3. Reason about the relationships between objects in the arrangement 
+  4. Handle both atomic and compositional arrangements
+  5. Ensure real life object orientations and spacing using the provided object information
+
+  Motif definitions: """<MOTIF_DEFINITIONS>"""
+  Read the motif definitions carefully and understand the usage, constraints, and examples for each motif type.
+  The constraints are referring to unique object types, not unique objects.
+  You will be provided with furniture information that may include key properties with the description. 
+  You must use these properties to select the most appropriate motif (e.g., `rectangular_perimeter` for a dining table with a 'rectangular' shape).
+
+  Decomposition strategy:
+  If you have more objects than a motif can handle based on its UNIQUE OBJECT TYPE constraint, you must either:
+  1. Select a subset of objects that fit a valid motif type (and handle remaining objects in secondary arrangements)
+  2. Group similar objects (e.g., multiple chairs as a single object type)
+
+  Common failure patterns to avoid:
+  - For arrangements with 4+ objects, split into multiple arrangements if no motif type can handle all objects
+  - Do not choose a general motif type if you can choose a more specific one. e.g. choose "bed_setup" instead of "on_each_side" for a bed with bedside table
+
+  Critical consistency requirements:
+  - The selected objects MUST completely reflect what is described in the arrangement description 
+  - The description MUST accurately represent ALL selected objects and their spatial relationships
+  - Every object mentioned in the description MUST appear in the objects list with correct counts
+  - Every object in the objects list MUST be referenced in the description
+  - Do not invent or add objects that are not explicitly provided in the available object list. All arrangements must ONLY use the objects specified.
+
+  JSON response requirements:
+  - All object counts must be integers
+  - Element "type" must be either a valid motif type or "object" (not specific furniture names)
+  - Include "constraint_check" field indicating the number of unique object types used in the motif (e.g., 2)
+  - Each object must appear exactly once in any hierarchy
+
+  Example of a complex arrangement "A sofa in front of a coffee table, with two side tables on each side of the sofa."
+  Objects: sofa (1), coffee table (1), side table (2)
+  Primary arrangement: sofa + coffee table (2 objects for in_front_of)
+  Secondary arrangement: side table (2 objects for on_each_side)
+  
+  Correct Hierarchical JSON:
+  ```json
+  {
+    "type": "in_front_of",
+    "description": "A coffee table in front of a group containing a sofa with side tables",
+    "elements": [
+      { 
+        "type": "object", "amount": 1, "description": "Coffee table" 
+      },
+      {
+        "type": "on_each_side",
+        "description": "A sofa with two side tables on each side of it",
+        "elements": [
+          { "type": "object", "amount": 1, "description": "Sofa" },
+          { "type": "object", "amount": 2, "description": "Side tables" }
+        ]
+      }
+    ]
+  }
+  ```
+
+  Example of a place setting with a plate, fork, knife, spoon, and a glass "A plate with a fork, knife, and spoon placed around it, and a glass nearby."
+  Objects: plate (1), fork (1), knife (1), spoon (1), glass (1)
+  Primary arrangement: plate + fork + knife (3 objects for on_each_side)
+  Secondary arrangement: spoon + glass (2 objects for in_front_of or left_of)
+  
+  Correct Hierarchical JSON:
+  ```json
+  {
+    "type": "next_to",
+    "description": "A primary place setting arrangement is positioned next to a spoon and a glass.",
+    "elements": [
+      {
+        "type": "on_each_side",
+        "description": "A fork and a knife on each side of a plate.",
+        "elements": [
+          { "type": "object", "amount": 1, "description": "Plate" },
+          { "type": "object", "amount": 1, "description": "Fork" },
+          { "type": "object", "amount": 1, "description": "Knife" }
+        ]
+      },
+      {
+        "type": "in_front_of",
+        "description": "A spoon in front of a glass.",
+        "elements": [
+          { "type": "object", "amount": 1, "description": "Spoon" },
+          { "type": "object", "amount": 1, "description": "Glass" }
+        ]
+      }
+    ]
+  }
+  ```
+############################################################################
+# decompose_count_furniture: >-
+#   You are generating a functional area for a room with the following description:
+#   <DESCRIPTION>
+
+#   The following furniture is available:
+#   <FURNITURE_INFO>
+
+#   First, let's count the total amount of each unique object.
+#   Use the same furniture names provided without adding any prefixes or articles.
+#   Respond with a JSON showing the counts:
+#   ```json
+#   {
+#     "object_name": count,
+#     ...
+#   }
+#   ```
+
+identify_primary_arrangement: >-
+  Given these objects and their counts """<OBJECT_COUNTS>"""
+  and the description of the target scene motif """<DESCRIPTION>"""
+  and the available furniture information """<FURNITURE_INFO>"""
+
+  What should be the primary/dominant arrangement that defines this arrangement's function?
+  Consider:
+  1. Which objects form the main functional relationship?
+  2. What motif type would best handle this relationship?
+  3. Do the objects fit the motif type constraints? (e.g., 'in_front_of' takes 2 unique types, 'on_each_side' can take 2 or 3 unique types).
+  4. What is the most appropriate spatial relationship for these objects based on their typical use?
+  5. If the overall description involves multiple objects, identify the CORE PAIR or TRIPLET and their motif first. Other objects/relationships can be handled by nesting this primary motif within a larger structure or by creating secondary arrangements.
+
+  Motif selection rules:
+    - Choose the most appropriate motif type based on the objects and their spatial relationships.
+    - Use common sense to select the most specific and functionally accurate motif. 
+      For example, for a description like "a chair in front of a desk", choose `face_to_face` over the more generic `in_front_of`, as it correctly infers the most likely functional orientation.
+    - The primary arrangement is typically the dominant functional grouping (e.g., dining table with chairs, bed with nightstands).
+    - Consider the functional purpose of the arrangement when selecting the appropriate motif.
+    - If you have more objects than a motif can handle, you MUST split them across primary and secondary arrangements.
+
+  Respond with json:
+  ```json
+  {
+    "rationale": "<rationale explaining why these specific objects form the primary arrangement and how they fit motif constraints>",
+    "motif_type": "<motif_type>",
+    "description": "<description for the selected motif_type and its objects ONLY, mentioning every object by name and count>",
+    "objects": {
+      "object_name_1": count (integer),
+      "object_name_2": count (integer),
+    },
+    "constraint_check": <number of unique object types used>
+  }
+  ```
+
+identify_remaining_arrangements: >-
+  Given the target scene motif description """<DESCRIPTION>"""
+  and the identified primary arrangement """<PRIMARY_ARRANGEMENT>"""
+  and the remaining objects """<REMAINING_OBJECTS>"""
+
+  For the remaining objects, identify logical secondary arrangement(s) to complete the description.
+  For each arrangement:
+  1. Which objects should be grouped together?
+  2. What motif type best suits their relationship?
+  3. Do the objects fit the motif type constraints? (refer to system constraints)
+
+  Secondary arrangement rules:
+  - Group objects with functional relationships
+  - Position arrangements with appropriate clearance from primary arrangement
+  - Each object should appear in exactly one arrangement
+  - Only use objects from the remaining objects list - do not reuse objects from primary arrangement
+  - Account for ALL remaining objects across all secondary arrangements
+
+  Respond with json for each secondary arrangement:
+  ```json
+  {
+    "rationale": "<rationale explaining why these specific remaining objects should be grouped together and how they fit motif constraints>",
+    "motif_type": "<motif_type>",
+    "description": "<description mentioning every object by name and count, be extremely specific about the arrangement>",
+    "objects": {
+      "object_name": count,
+      ...
+    },
+    "constraint_check": <number of unique object types used>
+  },
+  {
+    ...
+  }
+  ```
+
+generate_compositional_json: >-
+  Given the target scene motif description:
+  """<DESCRIPTION>"""
+  and the identified primary and secondary arrangements:
+  Primary: """<PRIMARY_ARRANGEMENT>"""
+  Secondary: """<SECONDARY_ARRANGEMENTS>"""
+
+  According to the identified arrangements,
+  combine the primary and secondary arrangements (if any) into a single hierarchical JSON following these strict rules, use the examples from the system prompt as a guide:
+  1. Every grouping MUST use a valid motif type that fits the motif constraints (refer to system constraints)
+  2. Descriptions should only reference the spatial relationship between objects in that specific arrangement or group
+  3. Do not add any new objects or relationships that are not in the identified arrangements
+  4. If you cannot fit all objects in the identified arrangements due to constraints, you MUST revise the arrangement strategy
+
+  Validation checklist:
+  - All objects accounted for exactly once? 
+  - Hierarchy optimized with minimal depth? 
+  - Motif type constraints respected throughout? 
+
+  Before responding, use a few sentences to describe and explain the hierarchy.
+  Format (RESPOND WITH EXACTLY ONE JSON):
+  ```json
+  {
+    "type": "<motif_type>",
+    "description": "Description of the full arrangement",
+    "elements": [
+      {
+        "type": "<motif_type or object>",
+        "amount": N (integer),        // Only for objects
+        "description": "Description for this element or object",
+        "elements": [...],  // Only for motif types
+      },
+      {
+        "type": "<motif_type or object>",
+        ...
+      }
+    ],
+  }
+  ```
+
+validate_arrangement: >-
+  You are an expert in validating the decomposition of a scene motif into a hierarchical arrangement of individual objects.
+  """<DESCRIPTION>"""
+
+  Given this arrangement JSON:
+  """<ARRANGEMENT_JSON>"""
+
+  Perform a comprehensive validation across three key dimensions:
+
+  1. Physical Feasibility:
+     - Can all objects be physically placed as described?
+     - Are there any impossible positions or collisions?
+     - For nested arrangements, validate as composite units
+     
+  2. Motif Correctness:
+     - Is each motif used according to its intended purpose?
+     - Do parent-child relationships make logical sense?
+     - Does each motif have the correct number of unique element types? (refer to system constraints)
+     - Is each element used exactly once?
+     
+  3. Completeness & Optimality:
+     - Is the hierarchy structured optimally?
+     - Could any nested arrangements be simplified?
+
+  Respond with detailed validation results:
+  ```json
+  {
+    "is_valid": boolean,
+    "checks": {
+      "motifs": {
+        "valid": boolean,
+        "issues": ["issue_description", ...]
+      },
+      "hierarchy": {
+        "valid": boolean,
+        "issues": ["issue_description", ...]
+      },
+      "completeness": {
+        "valid": boolean,
+        "missing_items": ["item_name", ...],
+        "duplicate_items": ["item_name", ...]
+      }
+    },
+    "fixes": [
+      "specific_fix_1",
+      "specific_fix_2",
+      ...
+    ]
+  }
+  ```
+
+invalid_response: >-
+  <FEEDBACK>
+  Please try again.

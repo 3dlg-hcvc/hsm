@@ -1,0 +1,146 @@
+system: >-
+  You are an professional AI assistant specializing in interior design and space planning.
+  Your primary tasks are to interpret room descriptions, generate plausible floor plans, 
+  and analyze provided floor plan data (including images when available) to suggest room details.
+
+  Core Tasks:
+  1. Room Type Identification: From a textual description, identify a canonical room type.
+  2. Floor Plan Generation: Based on a textual description and room type, generate a floor plan including:
+     - Vertices: Arranged clockwise, starting from (0,0). Measurements in meters.
+     - Room Shape: Generally rectangular or L-shaped. Avoid highly irregular shapes unless specified.
+     - Door(s) and Window(s): Placed on boundary walls, with coordinates on wall segments.
+     - Adherence to Standards: Measurements rounded to the nearest 0.25m. Room height defaults to 2.5m.
+  3. Floor Plan Analysis (when an image is provided):
+     - Analyze the floor plan image in detail, noting overall shape, wall dimensions (by ID, to 2 decimal places), 
+     door/window locations (precise coordinates), and using the 0.25m grid for reference.
+     - The floor plan visualization typically includes:
+       * Light blue filled area for the room.
+       * A 0.25m grid.
+       * Red lines for room boundaries with dimensions.
+       * Numeric IDs for wall segments.
+       * Vertex coordinates.
+       * Green door with swing arc.
+       * Blue window(s).
+       * Helper points (x markers) and coordinates.
+       * X and Z axes.
+
+  General Guidelines:
+  - Use precise measurements and coordinates.
+  - Consider traffic flow, natural light, and room proportions when applicable.
+
+# describe_room: >-
+#   Look at the floorplan in detail and analyze the room.
+#   This is the room type: <ROOM_TYPE>.
+#   This is the door location: <DOOR_LOCATION>.
+#   This is the room vertices: <ROOM_VERTICES>.
+#   
+#   Define functional zones:
+#   - Each functional area should be inside the room boundary
+#   - Identify distinct areas based on room shape and door location
+#   - Explain the rationale for each zone's purpose
+#   - Consider natural light, traffic flow, and room proportions
+#   - Justify how each zone complements adjacent spaces
+#   - Provide precise coordinates of the two corners for each functional zone
+#   - Aim to populate the room to the maximum extent possible
+# 
+#   Propose furniture in each zone:
+#   - Suggest specific furniture pieces 
+#   - Explain why each piece was chosen for its location:
+#     * How it supports the zone's function
+#     * Its relationship to other furniture pieces
+#     * Its impact on traffic flow
+#     * Its accessibility and usability
+#   - Include clearance spaces and circulation paths with measurements
+#   - Consider sight lines and visual balance
+#   - Address potential challenges and solutions
+# 
+#   Detail the complete layout:
+#   - Present a cohesive explanation of how all elements work together
+#   - Explain how the layout optimizes:
+#     * Space efficiency
+#     * Functionality
+#     * Comfort
+#     * Traffic flow
+#     * Social interaction (where applicable)
+# 
+#   Provide alternatives:
+#   - Present 2 alternative layouts with equal precision
+#   - Explain the specific advantages and tradeoffs of each option
+#   - Detail how each alternative serves different needs or preferences
+
+room_type: >-
+  Given a room description, respond with a single specifc room type in json format.
+  Room type should be a single word or phrase that captures the style, theme, and purpose of the room description.
+  """<ROOM_DESCRIPTION>"""
+  e.g. "modern living room", "kids bedroom for 2 children", "small study room"
+
+  ```json
+  {
+    "room_type": "<ROOM_TYPE>",
+  }
+  ```
+
+room_boundary: >-
+  This is the room description: """<ROOM_DESCRIPTION>"""
+  and this is the room type: """<ROOM_TYPE>"""
+  and this is the room vertices: """<ROOM_VERTICES>"""
+  and this is the door location: """<DOOR_LOCATION>"""
+  and this is the window locations: """<WINDOW_LOCATIONS>"""
+  and this is the room height: """<ROOM_HEIGHT>"""
+
+  The size of the room should be determined by the room description and the room type.
+  In particular, ensure the room is large enough to fit all mentioned furniture comfortably, with realistic spacing for movement and usability.
+  You may assume standard object dimensions if not specified.
+
+  For reference, average room size is 3m to 8m in width and depth.
+  Please make sure the room is not too small or too large based on the listed objects.
+
+  The room should be represented by vertices arranged in clockwise order and the room should be a generally rectangular or L-shaped. 
+  Avoid highly irregular or complex polygonal shapes unless explicitly implied by the room description.
+  The list of room vertices should consist of x and z coordinates, 
+  and the room must always start from (0,0) and measurements must be in meters.
+
+  The default room height is 2.5 meters unless specified.
+  Respect the room description when placing the door and windows.
+  There is always a door in the room and window in the room.
+  If window placement is ambiguous or not suitable, an empty list for window_locations is acceptable.
+  You can suggest multiple windows in the room according to the room description and room type.
+
+  Place the door on one of the room's boundary walls and usually near the corner of the room.
+  Ensure the door's and window's coordinates lie exactly on one of the wall segments.
+
+  Before JSON response, write a few sentences to justify the room's dimensions based on the described furniture count, and door/window placement.
+  Respond with json format:
+  ```json
+  {
+    "room_height": height in meters,
+    "room_vertices": [
+      [0,0],
+      [x1,z1],
+      [x2,z2],
+      [x3,z3],
+      ...
+    ],
+    "door_location": [x,z],
+    "window_locations": [
+      [x1,z1],
+      ...
+    ]
+  }
+  ```
+
+describe_room: >-
+  Look at the provided floorplan data and floorplan image in detail to analyze the room.
+  This is the door location: <DOOR_LOCATION>
+  This is the window locations: <WINDOW_LOCATIONS>
+  This is the room vertices: <ROOM_VERTICES>
+  This is the room type: <ROOM_TYPE>
+
+  Based on the floorplan data and image:
+  What does the room look like?
+  Use a few sentences to describe how you would segment the room into functional zones.
+  Suggest location for each functional zone.
+
+invalid_response: >-
+  <FEEDBACK>
+  Please try again.

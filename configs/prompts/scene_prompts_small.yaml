@@ -1,0 +1,370 @@
+system: >-
+  You are an AI assistant specializing in realistic and functional small object placement on furniture surfaces. 
+  Your task is to populate the surface of a furniture with small objects that are both functional and aesthetically pleasing.
+
+  You are provided with a top-down 2D plot visualization that contains:
+  - A highlighted area in the center representing the furniture surface to be populated
+  - "X" markers indicating surrounding objects with their names
+  - A red arrow indicating the front direction of the furniture
+  - Axis measurements in meters showing the scale and dimensions
+  - The exact dimensions of the small object labeled in the plot
+
+  All 2D visualization uses:
+  - The center of all plots is the origin (0,0)
+  - X-axis: represents width (negative is left, positive is right)
+  - Z-axis: represents depth (positive is back, negative is front)
+  - Highlighted area: shows the usable surface for object placement
+  - "X" markers: represent objects around the furniture
+  - Black arrow: indicates the front-facing direction
+  - Grid lines: help with precise measurements and positioning
+
+  Follow these steps:
+
+  1. Context Analysis:
+    - Count and map ALL surrounding objects that indicate usage (e.g., chairs, benches)
+    - Create a corresponding number of place settings or interaction points
+    - Ensure EVERY surrounding object that needs interaction has a corresponding setup
+    - Map potential interaction zones based on ALL surrounding object positions
+
+  2. Surface Analysis:
+    - Map the entire usable surface area in detail
+    - Divide surface into equal sections based on number of surrounding objects
+    - Ensure each interaction zone has adequate space
+    - Reserve central area for shared items
+
+  3. Object Selection & Distribution:
+    - Place one complete set of required items for EACH identified interaction point
+    - Distribute objects to ensure equal access from all interaction points
+    - Ensure no interaction points are missed or doubled
+    - Add shared items only after all required individual setups are complete
+
+  4. Functional Optimization:
+    - Ensure frequently used items remain accessible
+    - Create clear paths for reaching objects
+    - Account for object removal/replacement
+
+  5. Rotation Specification:
+    - For standalone objects: specify an "angle" in degrees (counterclockwise from positive Y-axis)
+    - For objects that should face users: use "facing" with the ID of the relevant object
+    - Examples of facing objects:
+      * Place settings facing chair positions
+      * Reading materials oriented toward seating
+      * Control devices pointing toward user positions
+      * Display items angled for optimal viewing
+
+choose_objects: >-
+  Choose from the following list of objects: """<OBJECT_LIST>""" 
+  Which objects usually has small objects placed on top/inside of it?
+  
+  You can respond with an empty array if it is absolutely certain that all objects are not meant to have any objects placed on top of them.
+  Respond exactly with the object names in JSON format.
+  ```json
+  {"objects": ["object_1", "object_n", ...]} 
+  ```
+
+populate_surface_motifs: >-
+  Based on the object layered description earlier, 
+  suggest object groupings only for the following small objects """<SMALL_OBJECTS>""" 
+  based on the room description """<ROOM_TYPE>""" and the previous assignment of surfaces to objects.
+
+  Critically assess if objects must be grouped. Group them only if they form a strong, not separable functional unit 
+  (e.g., a computer next to a mouse) or have a direct, necessary spatial dependenancy (e.g., a cup on top of a saucer). 
+  Otherwise, they should be in separate, smaller motifs or as single-object motifs. 
+  Avoid grouping loosely related items even if they are nearby.
+  
+  For each motif, define:
+    1. One or multiple objects (prefer single objects unless truly functionally dependent)
+    2. Realistic dimensions and clear spatial relationships between pieces
+    3. Total footprint dimensions [width, height, depth]
+    4. Required clearance space in meters
+
+  Guidelines for motif:
+    - PREFER single-object motifs over multi-object groupings
+    - ONLY group objects with explicit functional dependency (not thematic or decorative similarity)
+    - Each small object can only be used once in each motif
+    - Each motif can only contain a MAXIMUM of 4 different types of objects, if there are more than 4, split them into multiple motifs
+    - If unsure whether to group, ALWAYS create separate motifs
+    - Ensure ALL objects from the provided list are used across your arrangements
+    - IMPORTANT: Do NOT create duplicate arrangements with identical compositions.
+    - For multiple instances of the same motif type, use numbered suffixes (e.g., "plant_display_1", "plant_display_2", "book_stack_1", "book_stack_2")
+    
+  Respond with JSON with the following format:
+  ```json
+  {
+    "arrangements": [
+      {
+        "rationale": "concise explanation of arrangement functionality",
+        "id": "unique arrangement identifier (e.g. table_setup)",
+        "area_name": "name of motif",
+        "composition": {
+          "description": "direct and precise description of local object relationships only without any style details, accurately reflecting the exact quantities specified (e.g. a stack of four books, a lamp, a fork and a knife on each side of a plate)",
+          "furniture": [
+            {"id": id1, "amount": integer}, (according to the description)
+            ... (and more only if they are functionally related)
+          ],
+          "total_footprint": [width, height, depth],
+          "clearance": clearance_in_meters,
+        },
+      },
+      ... 
+    ],
+  }
+  ```
+
+  Description guidelines:
+  - Do not include references to room features (walls, doors, windows) and objects that are not small objects in description.
+  - Do not reference the furniture that the small objects are on.
+  - Do not include non-spatial or stylistic relationships (e.g. design style details); only give concrete, spatial relationships.
+  - The description must accurately reflect the exact quantities specified in the "amount" field
+
+small_objects_layered: >-
+  You are required to populate only and exactly the following small objects """<SMALL_OBJECTS>"""
+  on the following motif: """<MOTIF_DESCRIPTION>""",
+  only on the following large furniture: """<LARGE_FURNITURE>""",
+  in a room with description: """<ROOM_TYPE>""",
+
+  The layer information is: """<LAYER_INFO>"""
+
+  CRITICAL OBJECTIVE: You must place the EXACT total quantity specified for each object type across ALL furniture surfaces. This is a strict requirement - no more, no less.
+
+  Quantity Distribution Strategy:
+  1. First, identify all available surfaces across all layers
+  2. Calculate how to distribute each object type to reach the exact total
+  3. Ensure the sum of all amounts for each object type equals the required total exactly
+
+  For each small object entry, provide:
+    1. The name of the piece (use EXACTLY the same name as provided in the input)
+    2. The appearance/style description of the piece (be specific, e.g. "glass cup")
+    3. The dimensions of the piece [width, height, depth] in meters according to the description
+    4. The amount of the piece (integer)
+
+  JSON Structure Requirements:
+    - Each large_object_name appears exactly once as a top-level key
+    - Each layer_X appears exactly once under each large_object_name
+    - Each surface_X appears exactly once under each layer_X
+    - All layers and surfaces from the layer information must be included
+    - CRITICAL: Do NOT duplicate layer keys (e.g., do not define "layer_0" multiple times)
+
+  Additional Requirements:
+    - Each entry must represent a SINGLE type of object, do not generate composite sets
+    - If there are multiple small objects with different appearance/size, break them into multiple entries
+    - Use exact number of layers and surface IDs from layer information
+    - Consider space available on each surface and height of each layer (layer_0 is highest)
+
+  Respond with JSON:
+  ```json
+  {
+    "large_object_name": {
+      "layer_0": {
+        "surface_0": [
+          {
+            "name": "small_object_name",
+            "description": "appearance/style description of a single small object (e.g. glass cup)",
+            "dimensions": [width, height, depth],
+            "amount": number of same small object (integer),
+          },
+        ]
+      },
+      "layer_1": {
+        "surface_0": [
+          {
+            "name": "small_object_name",
+            "description": "appearance/style description of a single small object",
+            "dimensions": [width, height, depth],
+            "amount": number of same small object (integer),
+          },
+        ]
+      },
+      ...
+    },
+    ...
+  }
+  ```
+
+# small_objects_extra: >-
+#   You are required to populate small objects on the following large furniture(s): """<LARGE_FURNITURE>""",
+#   on the following motif: """<MOTIF_DESCRIPTION>""",
+#   For each surface of the furniture, suggest 1 to 2 small objects that are likely to be placed on the furniture. """<LAYER_INFO>"""
+#   Remember to consider the space available on each surface and the height of the surface.
+#   Note that the layer starts from 0, the first layer is the highest surface.
+#   Aim to populate some small objects on each surface unless the surface is too small for any reasonable small objects.
+
+#   For each small object, provide the following information:
+#     1. Integer id of the piece
+#     2. The name of the piece (be speicific and sperate different categories of furniture, e.g. "small plate", "large bowl", "small vase" etc.)
+#     3. The appearance/style description of the piece (be specific, e.g. "glass cup")
+#     4. The dimensions of the piece [width, height, depth] in meters according to the description, give the most likely dimensions
+#     5. The amount of the piece
+#     6. The id of the large furniture that the small object is on
+
+#   Critical requirements:
+#     - Each entry must represent a SINGLE type of object, do not generate composite sets (e.g. utensils should be break into forks, knives)
+#     - Composite sets (e.g. place settings) must be broken into individual components, if not clear, suggest the most likely components
+#     - You must use exact number of layers and surface IDs from layer information
+
+#   Respond with JSON:
+#   ```json
+#   {
+#     "large_object_name": {
+#       "layer_0": {
+#         "surface_0": [
+#           {
+#             "id": "reference to the motif id",
+#             "position": [x, z],
+#             "rotation": { (choose one of the following)
+#               "angle": angle,  // Default: 0 degrees (following the front direction of the large object)
+#               "facing": object_id  // Use when object should face a specific object
+#             },
+#           }, ...
+#         ], ...
+#       },
+#     },
+#   }
+#   ```
+
+
+populate_object: >-
+  Please provide how you would populate a "<LARGE_OBJECT>" in a "<ROOM_TYPE>" based on the following inputs:
+  - Image of the <LARGE_OBJECT>
+  - List of objects in the scene with object id, name, position and dimension: <EXISTING_OBJECTS>
+  - Object to be populated: <OBJECT_TO_POPULATE>
+
+  Output Format in json:
+  ```json
+  {
+    "object_layout": [
+      {
+        "name": "small object",
+        "position": [x, z],
+        "dimensions": [width, depth],
+        "rotation": { 
+          "angle": angle,  // Use for standalone decorative items
+          "facing": object_id  // Use when object should face a specific object
+        },
+        "rationale": "Brief placement explanation"
+      }
+    ]
+  }
+  ```
+
+describe_layered_object: >-
+  Please describe in a few sentences on the geometry of the layered object """<LARGE_OBJECT>""" in a """<ROOM_TYPE>""" based on the following inputs:
+  Think step by step about the geometry of the object and the space it occupies.
+  - List of objects in the scene with object id, name, position and dimension: """<EXISTING_OBJECTS>"""
+  - Object to be populated: """<OBJECT_TO_POPULATE>"""
+
+  Image (Layer breakdown):
+  - Shows """<LARGE_OBJECT>"""'s layers from highest (Layer 0) to lowest
+  - Use this to understand the layer structure and available space
+  - The position of each small object is relative to this image per layer
+  - Each layer shows:
+    - Height (y value in meters)
+    - Available space above
+    - Highlighted surfaces (available space)
+  
+populate_object_layered: >-
+  Given a scene motif """<PARENT_MOTIF_DESCRIPTION>""" in a room described as """<ROOM_TYPE>""",
+  populate the specified object with appropriate small objects from the provided motifs.
+
+  Small object motifs to place: """<SMALL_MOTIFS_TO_POPULATE>"""
+
+  Layer information for small object motifs to place:
+  - Each layer includes:
+    - Layer index (starting from 0, highest surface first)
+    - Layer height (from ground in meters)
+    - Whether it's the topmost visible surface
+    - Vertical space above the layer
+    - Surface details:
+      - Surface ID and color
+      - Dimensions (width, depth)
+      - Area
+      - Center position [x, z]
+
+  Layer Structure:
+  """<LAYER_INFO>"""
+
+  You are provided with two reference images:
+
+  Image 1 (Top-down motif view):
+  - Shows all large objects in context with front directions (black arrows)
+  - Use this to reason about spatial relationships
+
+  Image 2 (2D Layer breakdown for """<LARGE_OBJECT>"""):
+  - Visualizes the surfaces of each layer, from top-left (highest) to bottom-right (lowest)
+  - Small object positions are relative to this image
+  - Each layer displays:
+    - Height (y in meters)
+    - Space above
+    - Surface dimensions and availability
+
+  Critical Requirements:
+  1. You MUST populate ALL surfaces in ALL layers (even if empty, include empty arrays [])
+  2. Use only the exact surface IDs provided in the layer information
+  3. For rotation "facing" field, only reference objects within the same motif: <PARENT_MOTIF_OBJECTS>
+  4. Each small object must reference a valid motif ID from the available motifs
+
+  Guidelines:
+  - Use only the layers and surface IDs provided
+  - Place objects on surfaces likely to be used (avoid placing on very tall furniture tops unless typical)
+  - Use available vertical space wisely; consider real-world usability
+
+  Return the result in JSON:
+  ```json
+  {
+    "large_object_name": {
+      "layer_0": {
+        "surface_0": [
+          {
+            "id": "motif_id_from_available_motifs",
+            "position": [x, z],
+            "rotation": { (choose one of the following)
+              "angle": angle,  // Default: 0 degrees (facing the front direction of the parent object)
+              "facing": "object_name_from_same_motif" // Use when object should face towards a specific object
+              "face_away": "object_name_from_same_motif" // Use when object should face away from a specific object
+            },
+            "rationale": "Brief explanation"
+          }
+        ],
+        "surface_1": []  // Empty if no objects, but must be included if there is surface_1 in the layer
+      },
+      other layers if any
+    }
+  }
+  ```
+
+  Placement Guidelines:
+  - Consider real-world usage patterns
+  - Respect vertical space constraints
+  - Distribute objects logically across available surfaces
+  - Leave some surfaces empty if appropriate, but include them as empty arrays
+
+  Example:
+  If layer_info shows dining table has layer_0 with surface_0 and surface_1:
+  ```json
+  {
+    "dining table": {
+      "layer_0": {
+        "surface_0": [
+          {
+            "id": "place_setting_1",
+            "position": [0.3, 0.3],
+            "rotation": {"facing": "dining chair"},
+            "rationale": "Positioned for the chair"
+          }
+        ],
+        "surface_1": [
+          {
+            "id": "place_setting_2", 
+            "position": [-0.3, -0.3],
+            "rotation": {"angle": 0},
+            "rationale": "Opposite side placement"
+          }
+        ]
+      }
+    }
+  }
+  ```
+
+invalid_response: >-
+  <FEEDBACK>
+  Please try again.

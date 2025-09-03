@@ -1,0 +1,162 @@
+system: >-
+  You are an AI assistant specializing in interior design. 
+  Your task is to determine optimal placement of wall-mounted objects like paintings, shelves, mirrors, and TV screens.
+  For each wall object, you need to specify precise wall positioning, considering existing furniture, doors, windows, and blocked wall areas.
+
+  Your placement decisions should be:
+  1. Functional - objects serve their purpose effectively
+  2. Aesthetically pleasing - objects complement the room and furniture
+  3. Practical - objects don't overlap with blocked areas or existing features
+  4. Balanced - objects are distributed sensibly across available walls
+
+populate_surface_motifs: >-
+  Suggest object groupings only for the following wall mounted objects """<WALL_OBJECTS>""" 
+  based on the room description """<ROOM_TYPE>"""
+
+  For each motif, define:
+    1. One or multiple wall objects according to the room type, you should minimize the number of wall objects in each arrangement
+    2. Realistic dimensions and clear spatial relationships between pieces
+    3. Total footprint dimensions [width, height, depth]
+    4. Required clearance space in meters
+
+  Guidelines for motifs:
+    - Only reference the wall objects provided in the list
+    - Only group multiple wall objects into a single motif if explicitly mentioned in the description
+    - Group wall objects that have tight spatial relationships into a single motif 
+    - Each wall object can only be used once in each motif
+
+  Respond with JSON with the following format:
+  ```json
+  {
+    "arrangements": [
+      {
+        "rationale": "concise explanation of arrangement functionality",
+        "id": "unique arrangement identifier (be specific e.g. wall_painting, wall_shelf)",
+        "area_name": "name of scene motif",
+        "composition": {
+          "description": "direct and precise description of only wall mounted objects relationships without any style details  (e.g. a painting in front of a wall shelf)",
+          "furniture": [
+            {id: id1, amount: number of same wall objects (integer)},
+            ... (and more only if they are spatially tight)
+          ],
+          "total_footprint": [width, height, depth],
+          "clearance": clearance_in_meters
+        },
+      }
+    ]
+  }
+  ```
+
+  Description guidelines:
+  - Do not include references to room features (walls, doors, windows) and objects that are not wall mounted objects in description.
+  - Do not include any objects that are small objects or wall objects in description or anything that places on top of the large furniture.
+  - Do not include non-spatial or stylistic relationships (e.g. design style details); only include concrete, spatial relationships.
+  - Treat the wall as a flat surface, do not include any other features of the wall in the description.
+
+assign_wall_objects_to_walls: >-
+  Given this room description """<ROOM_DESCRIPTION>""",
+  choose the most appropriate wall for each wall object in """<WALL_OBJECTS>""". 
+  so you must set it to exactly one wall from the list """<ELIGIBLE_WALLS>""".
+
+  You'll be provided with a 2D visualization of the floor plan with:
+    - Red room outline on a 0.25m grid with wall IDs and coordinates.  
+    - Doors (green + swing arc) and windows (blue).  
+    - Existing furniture, arrows that indicate seating/view directions, helper points, axes.
+  Use the image to identify a suitable wall for each wall object.
+
+  Placement guidelines:
+    - Place screens/artwork on the wall most directly faced by the relevant seating arrows.  Avoid placing screens above windows unless explicitly required.
+    - Consider the room description and the arrangement of other objects (e.g., how chairs are oriented) to identify focal points or main viewing directions. 
+
+  Respond with JSON with the following format:
+  ```json
+  {
+    "objects": [
+      {
+        "rationale": "concise explanation of why this wall was chosen for this object",
+        "id": <wall_object_id> (integer),
+        "wall_id": "<wall_id>",
+      },...
+    ]
+  }
+  ```
+
+wall_objects_extra: >-
+  The following are the wall mounted objects that is already placed in the room: """<WALL_OBJECTS>""".
+  Here is the wall data that is available in the room: """<WALL_DATA>""".
+  Given a input room description """<ROOM_TYPE>""", 
+  You are required to add a few more (1-3) wall mounted objects according to the room type to fill the empty space.
+  Remember that wall mounted objects can only be placed on the wall,
+  Do not generate any objects that is placed on the wall (e.g. painting, mirror) or objects on top of the large furniture (e.g. a lamp on a table).
+  Do not use the same wall mounted objects as the one already placed in the room (e.g. a painting in the room, do not generate another painting).
+
+  For each wall mounted object that is required to be placed on the wall (e.g. a painting, a wall shelf, etc.) 
+    1. Integer id of the piece
+    2. The name of the piece (be speicific and sperate different categories of wall mounted objects, e.g. wall painting, wall shelf, etc.)
+    3. The appearance/style description of the piece (be specific, e.g. "large wooden wall shelf", "abstract wall painting")
+    4. The dimensions of the piece [width, height, depth] in meters according to the description, give the most likely dimensions in meters
+    5. The amount of the piece
+
+  Critical requirements:
+    - Each entry must represent a SINGLE type of object
+
+  Respond with JSON:
+  ```json
+  {
+    "wall_objects": [
+      {
+        "id": wall_object_id (integer),
+        "name": "wall_object_name",
+        "description": "appearance/style description of the wall object",
+        "dimensions": [width, height, depth],
+        "amount": number of same wall objects (integer),
+      },
+    ],
+  }
+  ```
+
+position_wall_objects: >-
+  Based on the previously determined wall object arrangements, provide precise positioning details for each object.
+  For each object, determine which wall it should be placed on and its exact position.
+  Room description: <ROOM_DESCRIPTION>
+
+  Wall objects to be placed: <WALL_OBJECTS>
+
+  Wall data including blocked areas: <WALL_DATA>
+
+  You'll be provided with a 2D visualization of the corresponding wall
+  
+  This image shows an unfolded view of the wall with:
+  - Blocked areas marked (furniture, windows, doors, electrical outlets)
+  - Available space indicated for wall object placement
+
+  For each wall object, determine the precise [x, z] coordinates for the object's center
+
+  Placement guidelines:
+    - Use the image to identify suitable placement areas
+    - Maintain at least 0.1m clearance from any blocked areas
+    - Place objects at functional heights (eye level ~1.5m for paintings, TV center at ~1.2-1.4m)
+    - Standard wall distances: 0.05m for paintings/mirrors, 0.2-0.3m for shelves/TV
+    - Ensure objects don't overlap with doors, windows, or electrical outlets
+    - Consider object size when determining placement (larger objects may need more space)
+
+  Output Format:
+  ```json
+  {
+    "positions": [
+      {
+        "rationale": "explanation of why this wall was chosen for this object"
+        "id": "wall_object_id",
+        "position": [x, z],
+      }
+    ]
+  }
+  ```
+
+  Technical notes:
+  - The [x, z] coordinates should be global coordinates in the room space
+  - Reference the image to ensure objects are placed in valid, unblocked areas
+
+invalid_response: >-
+  <FEEDBACK>
+  Please revise your suggestion.
