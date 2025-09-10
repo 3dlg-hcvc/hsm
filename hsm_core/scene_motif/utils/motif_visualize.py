@@ -11,6 +11,7 @@ import os
 
 from hsm_core.visualization.geometry_2d_visualizer import visualize_object_geometry
 from hsm_core.utils.plot_utils import get_scene_transforms
+from hsm_core.utils import get_logger
 
 def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, view_name, object_bounds=None):
     """Helper to finalize any 2D plot by fitting bounds to all artists."""
@@ -30,7 +31,8 @@ def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, vie
         ax.set_ylim(y_min - padding_y, y_max + padding_y)
     else:
         # Fallback to matplotlib's autoscale with padding
-        print(f"Warning: No object bounds provided for {view_name} plot, using autoscale fallback.")
+        logger = get_logger('scene_motif.visualization')
+        logger.warning(f"No object bounds provided for {view_name} plot, using autoscale fallback")
         ax.relim()
         ax.autoscale_view()
         xlim = ax.get_xlim()
@@ -57,9 +59,14 @@ def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, vie
         
         try:
             fig.savefig(output_file, dpi=100, bbox_inches='tight', pad_inches=0.1)
-            print(f"Saved {view_name} visualization to: {output_file}")
+            # Log visualization save instead of printing
+            import logging
+            logger = logging.getLogger('hsm_core.scene_motif.visualization')
+            logger.info(f"Saved {view_name} visualization to: {output_file}")
         except Exception as e:
-            print(f"Error saving {view_name} visualization plot: {e}")
+            import logging
+            logger = logging.getLogger('hsm_core.scene_motif.visualization')
+            logger.error(f"Error saving {view_name} visualization plot: {e}")
         finally:
             plt.close(fig)
 
@@ -90,14 +97,14 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
                     node_name = Path(glb_path).stem
                     scene.add_geometry(mesh, node_name=node_name)
                 else:
-                    print(f"Warning: Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
-                    return None, [], None, {}, {}, {} 
+                    logger.warning(f"Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
+                    return None, [], None, {}, {}, {}
         except Exception as e:
-            print(f"Error loading GLB file {glb_path}: {e}")
-            return None, [], None, {}, {}, {} 
-             
+            logger.error(f"Error loading GLB file {glb_path}: {e}")
+            return None, [], None, {}, {}, {}
+
     if scene is None or not hasattr(scene, 'geometry') or not scene.geometry:
-         print("Error: Scene is empty or None.")
+         logger.error("Scene is empty or None")
          return None, [], None, {}, {}, {} 
          
     colors = list(mcolors.TABLEAU_COLORS.values())
@@ -117,16 +124,16 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
             mesh_world.apply_transform(transform)
             world_meshes[node_name] = mesh_world
         except Exception as e:
-            print(f"Warning: Could not apply world transform to {node_name}: {e}")
+            logger.warning(f"Could not apply world transform to {node_name}: {e}")
 
     object_index = 0
     for node_name, mesh_world in world_meshes.items():
         color = colors[object_index % len(colors)]
         color_name = colors_names[object_index % len(colors_names)]
         label = override_name[object_index] if override_name and object_index < len(override_name) else node_name
-        
+
         if verbose:
-            print(f"Visualizing {view_name}: mesh {node_name} with color {color} and label {label}") 
+            logger.debug(f"Visualizing {view_name}: mesh {node_name} with color {color} and label {label}") 
         
         try:
             # Use the selected view axes indices
@@ -142,7 +149,7 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
                 min_dimension_threshold=0.01  # Use 1cm threshold for motif visualization (vs 10cm default)
             )    
         except Exception as e:
-             print(f"Error during visualize_object_geometry for {label} in {view_name}: {e}")
+             logger.error(f"Error during visualize_object_geometry for {label} in {view_name}: {e}")
              continue
 
         if obj_info:
@@ -156,7 +163,7 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
                 all_artists.extend(geom_artists)
 
             if "bounds" not in obj_data or "center" not in obj_data["bounds"]:
-                 print(f"Warning: obj_info missing bounds/center for {label}")
+                 logger.warning(f"obj_info missing bounds/center for {label}")
                  continue
 
             center_2d = obj_data["bounds"]["center"] # Center in the selected 2D plane
@@ -217,10 +224,10 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
 
             object_index += 1
         else:
-             if verbose: print(f"Warning: visualize_object_geometry returned no info for {label}")
-        
+             if verbose: logger.debug(f"visualize_object_geometry returned no info for {label}")
+
     if not found_valid_object:
-        print(f"Warning: No valid objects found to visualize in {view_name} view.")
+        logger.warning(f"No valid objects found to visualize in {view_name} view")
         plt.close(fig) # Close the figure if nothing was plotted
         return None, [], scene, {}, {}, {}
     
@@ -300,14 +307,14 @@ def visualize_scene_motif_auto_view(glb_path=None, scene=None, override_name=Non
                     node_name = Path(glb_path).stem
                     scene.add_geometry(mesh, node_name=node_name)
                 else:
-                    print(f"Warning: Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
-                    return None, [], None, {}, {}, {} 
+                    logger.warning(f"Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
+                    return None, [], None, {}, {}, {}
         except Exception as e:
-            print(f"Error loading GLB file {glb_path}: {e}")
-            return None, [], None, {}, {}, {} 
-             
+            logger.error(f"Error loading GLB file {glb_path}: {e}")
+            return None, [], None, {}, {}, {}
+
     if scene is None or not hasattr(scene, 'geometry') or not scene.geometry:
-         print("Error: Scene is empty or None for auto-view calculation.")
+         logger.error("Scene is empty or None for auto-view calculation")
          return None, [], None, {}, {}, {} 
 
     # Get world-transformed meshes
@@ -326,10 +333,10 @@ def visualize_scene_motif_auto_view(glb_path=None, scene=None, override_name=Non
             world_meshes[node_name] = mesh_world
             all_vertices_3d.append(mesh_world.vertices)
         except Exception as e:
-            print(f"Warning (all_views): Could not apply world transform to {node_name}: {e}")
-            
+            logger.warning(f"Could not apply world transform to {node_name}: {e}")
+
     if not all_vertices_3d:
-        print("Error (all_views): No valid vertices found in any mesh.")
+        logger.error("No valid vertices found in any mesh")
         # Return scene in case it was loaded, but no geoms to process
         return None, [], scene if 'scene' in locals() and scene is not None else None, {}, {}, {}
         
@@ -394,24 +401,24 @@ def visualize_scene_motif_auto_view(glb_path=None, scene=None, override_name=Non
             spread = max(0, dimensions[0]) * max(0, dimensions[1])
         
         if verbose:
-            print(f"View '{view_name_iter}' spread (eligible pool): {spread:.4f}")
-            
+            logger.debug(f"View '{view_name_iter}' spread (eligible pool): {spread:.4f}")
+
         if spread > max_spread:
             max_spread = spread
             best_view_name = view_name_iter
             best_view_min_bounds = current_min_bounds
             best_view_max_bounds = current_max_bounds
-            
+
     if best_view_name is None: # Fallback if no best view determined (e.g. all spreads zero)
         if verbose:
-            print("Warning: Could not determine best view from eligible pool based on spread. Defaulting to Top XZ.")
+            logger.warning("Could not determine best view from eligible pool based on spread. Defaulting to Top XZ")
         best_view_name = "Top XZ" # Default fallback
         if eligible_view_names and "Top XZ" not in eligible_view_names: # If Top XZ wasn't even eligible, pick first eligible
              best_view_name = eligible_view_names[0]
 
 
     if verbose:
-        print(f"Selected best view: '{best_view_name}' with spread {max_spread:.4f}")
+        logger.info(f"Selected best view: '{best_view_name}' with spread {max_spread:.4f}")
 
     # Get parameters for the best view
     best_view_params = candidate_views[best_view_name]
@@ -460,7 +467,7 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
             scene = trimesh.load(glb_path, process=False)
             if global_scene_transform is not None:
                 if verbose:
-                    print(f"Applying global_scene_transform to loaded GLB for all views: {global_scene_transform}")
+                    logger.debug(f"Applying global_scene_transform to loaded GLB for all views: {global_scene_transform}")
                 transformed_geometries = {}
                 for geom_name, geom in scene.geometry.items():
                     transformed_geometries[geom_name] = geom.copy().apply_transform(global_scene_transform)
@@ -472,14 +479,14 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
                     node_name = Path(glb_path).stem
                     scene.add_geometry(mesh, node_name=node_name)
                 else:
-                    print(f"Warning (all_views): Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
+                    logger.warning(f"Loaded object is not a Trimesh Scene or Mesh: {type(scene)}")
                     return {}
         except Exception as e:
-            print(f"Error (all_views) loading GLB file {glb_path}: {e}")
+            logger.error(f"Error loading GLB file {glb_path}: {e}")
             return {}
-            
+
     if scene is None or not hasattr(scene, 'geometry') or not scene.geometry:
-        print("Error (all_views): Scene is empty or None.")
+        logger.error("Scene is empty or None")
         return {}
 
     all_vertices_3d = []
@@ -495,10 +502,10 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
             mesh_world.apply_transform(transform) # Node-specific transform
             all_vertices_3d.append(mesh_world.vertices)
         except Exception as e:
-            print(f"Warning (all_views): Could not apply world transform to {node_name_iter}: {e}")
-    
+            logger.warning(f"Could not apply world transform to {node_name_iter}: {e}")
+
     if not all_vertices_3d:
-        print("Error (all_views): No valid vertices found in any mesh.")
+        logger.error("No valid vertices found in any mesh")
         return {}
     all_vertices_3d_np = np.concatenate(all_vertices_3d, axis=0)
 
@@ -509,21 +516,21 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
 
     generated_figs_dict: Dict[str, Figure] = {}
     if verbose:
-        print("Generating all candidate views...")
+        logger.info("Generating all candidate views")
 
     for view_name_candidate, view_params_candidate in candidate_views.items():
         indices_candidate = view_params_candidate['indices']
         vertices_2d_candidate = all_vertices_3d_np[:, indices_candidate]
-        
+
         current_min_bounds_candidate = None
         current_max_bounds_candidate = None
         if vertices_2d_candidate.shape[0] > 0:
             current_min_bounds_candidate = np.min(vertices_2d_candidate, axis=0)
             current_max_bounds_candidate = np.max(vertices_2d_candidate, axis=0)
-        
+
         if verbose:
-            print(f"Generating plot for candidate view: {view_name_candidate}")
-        
+            logger.debug(f"Generating plot for candidate view: {view_name_candidate}")
+
         # Call _visualize_scene_motif_selected_view to generate and save the plot
         fig_candidate, _, _, _, _, _ = _visualize_scene_motif_selected_view(
             glb_path=None, # Scene is already loaded and passed
@@ -543,6 +550,6 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
         if fig_candidate:
             generated_figs_dict[view_name_candidate] = fig_candidate
         elif verbose:
-            print(f"Warning (all_views): No figure generated for candidate view {view_name_candidate}")
+            logger.warning(f"No figure generated for candidate view {view_name_candidate}")
             
     return generated_figs_dict

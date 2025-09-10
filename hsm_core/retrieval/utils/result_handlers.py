@@ -4,15 +4,15 @@ Result Handlers Module
 This module handles the application and logging of retrieval results.
 """
 
-import logging
 from typing import List, Dict
 from pathlib import Path
 from copy import deepcopy
+from hsm_core.utils import get_logger
 
 from hsm_core.scene_motif.core.obj import Obj
 from hsm_core.retrieval.utils.retriever_helpers import TransformTracker
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.utils.result_handlers')
 
 
 def apply_and_log_results(

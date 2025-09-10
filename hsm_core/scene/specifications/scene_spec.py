@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterator, List, Optional, Any
 import json
 import re
+import logging
 from pathlib import Path
 
 import sys
@@ -12,6 +13,9 @@ project_root = current_dir.parent
 sys.path.append(str(project_root))
 
 from hsm_core.scene.specifications.object_spec import ObjectSpec
+from hsm_core.utils import get_logger
+
+logger = get_logger('scene.specifications.scene_spec')
 
 @dataclass
 class SceneSpec:
@@ -65,11 +69,11 @@ class SceneSpec:
         """Find object by ID in all objects."""
         result = self._id_to_object_map.get(obj_id)
         if result is None:
-            # Debug: If not found in map, check if it exists in the lists but map is stale
+            # If not found in map, check if it exists in the lists but map is stale
             all_objects = self.large_objects + self.small_objects + self.wall_objects + self.ceiling_objects
             for obj in all_objects:
                 if obj.id == obj_id:
-                    print(f"DEBUG: Object {obj_id} found in lists but not in _id_to_object_map. Updating map.")
+                    logging.debug(f"Object {obj_id} found in lists but not in _id_to_object_map. Updating map.")
                     self._id_to_object_map[obj_id] = obj
                     return obj
         return result
@@ -97,7 +101,7 @@ class SceneSpec:
                     spec = ObjectSpec(**raw_obj_data)
                     parsed_list.append(spec)
                 except TypeError as e:
-                    print(f"Warning: Skipping object due to missing data or type mismatch in JSON: {raw_obj_data}. Error: {e}", file=sys.stderr)
+                    logging.warning(f"Skipping object due to missing data or type mismatch in JSON: {raw_obj_data}. Error: {e}")
             return parsed_list
 
         # Parse all objects from JSON
@@ -177,8 +181,8 @@ class SceneSpec:
             ceiling_objects=ceiling_objects
         )
 
-        print("Loaded SceneSpec: ", scene_spec.to_dict())
-        # pprint.pprint(scene_spec.to_dict())
+        logging.debug(f"Loaded SceneSpec: {scene_spec.to_dict()}")
+        # Debug logging for SceneSpec can be enabled if needed
 
         return scene_spec
 
@@ -348,38 +352,17 @@ class SceneSpec:
             A new SceneSpec containing only the added objects with corrected IDs, or an empty one if processing fails.
         """
         all_objects = []
-        print(f"Debug: add_layered_objects_from_response. Expected parent ID: {expected_parent_id}, Expected VLM parent name: '{expected_parent_name_in_llm_response}'. Response keys: {list(response.keys())}")
-
-        # Temporary Debugging Prints
-        print(f"DEBUG SCENESPEC: Inside add_layered_objects_from_response for parent ID {expected_parent_id}, VLM name '{expected_parent_name_in_llm_response}'")
-        print(f"DEBUG SCENESPEC: Wall objects IDs: {[obj.id for obj in self.wall_objects]}")
-        print(f"DEBUG SCENESPEC: Large objects IDs: {[obj.id for obj in self.large_objects]}")
-        print(f"DEBUG SCENESPEC: Small objects IDs: {[obj.id for obj in self.small_objects]}")
-        print(f"DEBUG SCENESPEC: Ceiling objects IDs: {[obj.id for obj in self.ceiling_objects]}")
-        found_in_debug_check = False
-        for obj_type_list_name in ["wall_objects", "large_objects", "small_objects", "ceiling_objects"]:
-            obj_list = getattr(self, obj_type_list_name)
-            for obj_instance in obj_list:
-                if obj_instance.id == expected_parent_id:
-                    print(f"DEBUG SCENESPEC: Found object with ID {expected_parent_id} in {obj_type_list_name} during debug scan. Name: {obj_instance.name}, ID type: {type(obj_instance.id)}, Obj ID type: {type(obj_instance.id)}")
-                    found_in_debug_check = True
-                    break
-            if found_in_debug_check:
-                break
-        if not found_in_debug_check:
-            print(f"DEBUG SCENESPEC: Object with ID {expected_parent_id} NOT FOUND during manual debug scan.")
-        # End Temporary Debugging Prints
 
         expected_parent_object = self.get_object_by_id(expected_parent_id)
         if not expected_parent_object:
-            print(f"Warning: Expected parent object with ID {expected_parent_id} not found globally. Cannot process response.")
+            logger.warning(f"Expected parent object with ID {expected_parent_id} not found globally. Cannot process response")
             return self.add_objects([], "small") # Return empty spec from add_objects
 
         parent_name_from_llm_response_key = None
         layers_to_process = None
 
         if not response:
-            print(f"Warning: VLM response is empty. No small objects to add for parent ID {expected_parent_id} ('{expected_parent_name_in_llm_response}').")
+            logger.warning(f"VLM response is empty. No small objects to add for parent ID {expected_parent_id} ('{expected_parent_name_in_llm_response}')")
             return self.add_objects([], "small")
 
         # Try to find the expected_parent_name_in_llm_response (case-insensitive) in the response keys
@@ -388,21 +371,21 @@ class SceneSpec:
             if key_from_llm.lower() == expected_parent_name_in_llm_response.lower():
                 found_key = key_from_llm
                 break
-        
+
         if found_key:
             parent_name_from_llm_response_key = found_key
             layers_to_process = response[parent_name_from_llm_response_key]
-            print(f"Found and processing for VLM key '{parent_name_from_llm_response_key}' (corresponds to expected parent ID {expected_parent_id}, expected VLM name '{expected_parent_name_in_llm_response}') from multi-key VLM response.")
+            logger.info(f"Found and processing for VLM key '{parent_name_from_llm_response_key}' (corresponds to expected parent ID {expected_parent_id}, expected VLM name '{expected_parent_name_in_llm_response}') from multi-key VLM response")
         else:
-            print(f"Warning: Expected parent name '{expected_parent_name_in_llm_response}' (for ID {expected_parent_id}) not found directly as a key in VLM response keys: {list(response.keys())}. Response might be malformed or empty for this parent.")
+            logger.warning(f"Expected parent name '{expected_parent_name_in_llm_response}' (for ID {expected_parent_id}) not found directly as a key in VLM response keys: {list(response.keys())}. Response might be malformed or empty for this parent")
             return self.add_objects([], "small")
 
         if not layers_to_process:
              # This case should ideally be caught by earlier checks, but as a safeguard:
-            print(f"Warning: No layers found to process for parent '{parent_name_from_llm_response_key}' (ID: {expected_parent_id}).")
+            logger.warning(f"No layers found to process for parent '{parent_name_from_llm_response_key}' (ID: {expected_parent_id})")
             return self.add_objects([], "small")
 
-        print(f"Processing small objects for parent '{parent_name_from_llm_response_key}' (ID: {expected_parent_id})")
+        logger.info(f"Processing small objects for parent '{parent_name_from_llm_response_key}' (ID: {expected_parent_id})")
             
         for layer_id, surfaces in layers_to_process.items():
             for surface_key, objects_on_surface in surfaces.items():
@@ -420,7 +403,6 @@ class SceneSpec:
                     )
                     all_objects.append(obj_spec)
                         
-        # Now add all objects at once; add_objects will handle final ID generation for the small objects themselves
         return self.add_objects(all_objects, "small")
 
     def add_multi_parent_small_objects(self, llm_response_data: Dict[str, Any], parent_name_to_id_map: Dict[str, int]) -> 'SceneSpec':
@@ -457,7 +439,7 @@ class SceneSpec:
             if actual_parent_id is None:
                 # This case should ideally be caught by pre-validation if parent_names arg to validator was correct.
                 # However, as a safeguard during direct calls or if maps are mismatched:
-                print(f"Critical Error: Parent instance name '{parent_instance_name}' in pre-validated VLM response not found in parent_name_to_id_map. Skipping this parent.")
+                logger.error(f"Parent instance name '{parent_instance_name}' in pre-validated VLM response not found in parent_name_to_id_map. Skipping this parent")
                 continue
 
             for layer_key, surfaces in layers.items():
@@ -482,17 +464,17 @@ class SceneSpec:
         
         if not all_new_small_specs:
             # This can happen if the VLM response, though structurally valid, contains no objects.
-            print("No small objects to add from the (validated) multi-parent response.")
-        
+            logger.info("No small objects to add from the (validated) multi-parent response")
+
         return self.add_objects(all_new_small_specs, "small")
 
     def __iter__(self) -> Iterator[ObjectSpec]:
         """
         Iterate over all ObjectSpec instances in the SceneSpec.
-        
-        Example: print all object ids
+
+        Example: log all object ids
             for obj in scene_spec:
-                print(obj.id)
+                logger.info(obj.id)
         """
         yield from self.large_objects
         yield from self.small_objects

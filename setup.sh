@@ -199,7 +199,7 @@ setup_environment() {
             return 0
         fi
         log_info "Removing existing environment..."
-        $CONDA_CMD env remove -n hsm --yes || {
+        $CONDA_CMD env remove -n hsm || {
             log_error "Failed to remove existing environment"
             exit 1
         }
@@ -207,7 +207,7 @@ setup_environment() {
 
     # Create environment
     log_info "Creating conda environment 'hsm'..."
-    if $CONDA_CMD env create -f environment.yml --yes; then
+    if $CONDA_CMD env create -f environment.yml; then
         log_success "Environment created successfully \n"
     else
         log_error "Failed to create environment"
@@ -282,13 +282,18 @@ download_hssd_models() {
             fi
         fi
 
-        # Clone the dataset using git (try SSH first, fallback to HTTPS)
+        # Clone the dataset using git (try SSH first, then HTTPS, then hf download)
         if ! git clone git@hf.co:datasets/hssd/hssd-models; then
             log_warning "SSH clone failed, trying HTTPS..."
             if ! git clone https://huggingface.co/datasets/hssd/hssd-models; then
-                log_error "Failed to clone HSSD models repository with both SSH and HTTPS"
-                log_info "Please check your internet connection and authentication setup"
-                return 1
+                log_warning "HTTPS clone failed, trying 'hf download'..."
+                if [ ! -d "hssd-models/objects/0" ]; then
+                    if ! hf download hssd/hssd-models --repo-type=dataset --local-dir hssd-models; then
+                        log_error "Failed to obtain HSSD models via git and hf download"
+                        log_info "Please check do you accept the license for HSSD models on Hugging Face and authentication setup"
+                        return 1
+                    fi
+                fi
             fi
         fi
 
@@ -503,7 +508,8 @@ verify_setup() {
         issues=$((issues + 1))
     else
         local required_paths=(
-            "data/hssd-models/objects"
+            "data/hssd-models/objects/9"
+            "data/hssd-models/objects/x"
             "data/hssd-models/objects/decomposed"
             "data/hssd-models/support-surfaces"
             "data/motif_library/meta_programs"

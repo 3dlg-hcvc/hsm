@@ -11,7 +11,6 @@ from .core.hierarchy import MotifHierarchy, HierarchyNode
 
 from .generation import batch_inference, generate_arrangement_code
 from .utils.motif_visualize import visualize_scene_motif
-from .utils.logger import MotifLogger
 
 from .generation.decomposition import decompose_motif_async, decompose_motif_with_session
 from .generation import process_motif_with_visual_validation, build_arrangement_from_json
@@ -44,7 +43,6 @@ __all__ = [
 
     # Public utilities
     'visualize_scene_motif',
-    'MotifLogger'
 ]
 
 __version__ = "1.0.0"

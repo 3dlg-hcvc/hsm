@@ -11,22 +11,20 @@ class HSMArgumentParser:
     across multiple scales (large furniture, wall/ceiling objects, small items).
     """
 
-    def __init__(self, project_root: Path | str, description: str = None):
+    def __init__(self, project_root: Path | str):
         """
         Initializes the argument parser.
 
         Args:
             project_root: The root directory of the project.
-            description: The description of the parser (uses default if None).
         """
-        if description is None:
-            description = (
-                "HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation\n\n"
-                "Generate realistic 3D indoor scenes from natural language descriptions.\n"
-                "Supports hierarchical object organization, spatial optimization, and LLM-driven\n"
-                "scene decomposition. Results include 3D models, visualizations, and scene state.\n\n"
-                "Example: python main.py -d 'modern living room with sofa and coffee table' --output results/living_room"
-            )
+        description = (
+            "HSM: Hierarchical Scene Motifs for Multi-Scale Indoor Scene Generation\n\n"
+            "Generate realistic 3D indoor scenes from natural language descriptions.\n"
+            "Supports hierarchical object organization, spatial optimization, and VLM-driven\n"
+            "scene decomposition. Results include 3D models, visualizations, and scene state.\n\n"
+            "Example: python main.py -d 'modern living room with sofa and coffee table' --output results/living_room"
+        )
         self.parser = argparse.ArgumentParser(
             description=description,
             formatter_class=argparse.RawDescriptionHelpFormatter
@@ -58,8 +56,7 @@ class HSMArgumentParser:
             type=str,
             help=(
                 "Directory where generated scene files will be saved.\n"
-                "Includes 3D models (.glb), visualizations (.png), scene state (.json),\n"
-                "and LLM session logs. Default: results/single_run"
+                "Default: results/single_run"
             ),
             default="results/single_run"
         )
@@ -71,7 +68,7 @@ class HSMArgumentParser:
             help=(
                 "Object types to generate and arrange in the scene.\n"
                 "Available types:\n"
-                "  large    - Main furniture (sofas, tables, beds, cabinets)\n"
+                "  large    - Furniture place on floors (sofas, tables, beds, cabinets)\n"
                 "  wall     - Wall-mounted objects (pictures, shelves, lights)\n"
                 "  ceiling  - Ceiling fixtures (lights, fans)\n"
                 "  small    - Small objects placed on surfaces (lamps, decor, appliances)\n"

@@ -1,6 +1,6 @@
 # Geometry Processing Constants
 NORMAL_HORIZONTAL_THRESHOLD = 0.95  # Threshold for horizontal surfaces
-MIN_AREA = 0.01  # Minimum area in square meters (100cm²) for initial filtering
+MIN_AREA = 0.001  # Minimum area in square meters for initial filtering
 AREA_THRESHOLD = 0.02  # Minimum area threshold for layer filtering
 MIN_DIMENSION = 0.1  # Minimum dimension threshold (10cm) for geometry validation
 VERTEX_MERGE_THRESHOLD = 1e-4  # Threshold for merging duplicate vertices in simplification

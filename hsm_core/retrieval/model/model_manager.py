@@ -4,13 +4,12 @@ import threading
 import multiprocessing
 from typing import Tuple, Dict, Any
 import open_clip
-from open_clip.tokenizer import HFTokenizer, SimpleTokenizer
-import logging
 
 MODEL_NAME = "ViT-H-14-378-quickgelu"
 PRETRAINED = "dfn5b"
 
-logger = logging.getLogger(__name__)
+from hsm_core.utils import get_logger
+logger = get_logger('retrieval.model_manager')
 
 
 class ModelManager:
@@ -34,7 +33,7 @@ class ModelManager:
                 cls._clip_tokenizer[cls._process_id] = {}
                 cls._embedding_cache[cls._process_id] = {}
                 cls._initialized = True
-                logger.info(f"ModelManager initialized for process {cls._process_id}")
+                logger.debug(f"ModelManager initialized for process {cls._process_id}")
 
     @classmethod
     async def initialize_model_async(cls, model_name: str, pretrained: str) -> None:
@@ -49,9 +48,8 @@ class ModelManager:
         if model_key in cls._clip_model[cls._process_id]:
             return
 
-        # Use thread-safe model loading
         try:
-            logger.info(f"Loading model '{model_key}' for process {cls._process_id} on device {device}")
+            logger.debug(f"Loading model '{model_key}' for process {cls._process_id} on device {device}")
 
             loop = asyncio.get_event_loop()
             model, tokenizer = await asyncio.wait_for(
@@ -65,7 +63,7 @@ class ModelManager:
             cls._clip_model[cls._process_id][model_key] = model
             cls._clip_tokenizer[cls._process_id][model_key] = tokenizer
             cls._embedding_cache[cls._process_id][model_key] = {}
-            logger.info(f"Model '{model_key}' loaded successfully for process {cls._process_id}")
+            logger.debug(f"Model '{model_key}' loaded successfully for process {cls._process_id}")
 
         except Exception as e:
             logger.error(f"Error loading model '{model_key}': {str(e)}")
@@ -126,3 +124,5 @@ class ModelManager:
                 del cls._clip_tokenizer[pid][model_key]
                 cls._embedding_cache[pid].pop(model_key, None)
                 logger.info(f"Cleared cache and resources for model '{model_key}'")
+            else:
+                logger.info(f"Cache for model '{model_key}' was already cleared or never loaded")

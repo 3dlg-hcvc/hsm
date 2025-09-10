@@ -1,19 +1,19 @@
-import logging
 import time
 from typing import List, Optional, Tuple, Dict, TYPE_CHECKING
 from copy import deepcopy
 import numpy as np
 from pathlib import Path
+from hsm_core.utils import get_logger
 
 from ..core.obj import Obj
 from ..core.arrangement import Arrangement
 from .mesh_utils import assign_mesh_to_object_with_normalization
 
 if TYPE_CHECKING:
-    from hsm_core.scene.motif import SceneMotif
+    from hsm_core.scene.core.motif import SceneMotif
     from hsm_core.scene.specifications.object_spec import ObjectSpec
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.utils.utils')
 
 
 def log_time(start_time: float, message: str, indent_level: int = 0):

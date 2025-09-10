@@ -1,11 +1,11 @@
 from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
-import logging
+from hsm_core.utils import get_logger
 
 from .arrangement import Arrangement
 from .obj import Obj
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.core.hierarchy')
 
 
 @dataclass

@@ -1,8 +1,8 @@
 import json
-import logging
 import traceback
 from copy import copy
 from typing import List, Dict
+from hsm_core.utils import get_logger
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from ...utils import calculate_arrangement_half_size
 from ...utils.validation import inference_validation
 from ...core.obj import Obj
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.generation.llm.llm_generators')
 
 
 async def generate_arrangement(inference_session, motif_type, meta_program, 
@@ -21,13 +21,16 @@ async def generate_arrangement(inference_session, motif_type, meta_program,
     """Generate a single arrangement or sub-arrangement."""
     try:
         if is_leaf:
+            # Get list of available objects (those with meshes)
+            available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'mesh') and obj.mesh is not None]
+
             function_call_response = inference_session.send_with_validation("inference",
                 {
                     "motif_type": motif_type,
                     "description": description,
                     "meta_program": meta_program.code_string,
                     "furniture_info": [f"{obj.label} (half_dimensions: {tuple(np.round(d, 3) for d in obj.bounding_box.half_size)})" for obj in furniture_objs]
-                }, lambda response: inference_validation(response, meta_program))
+                }, lambda response: inference_validation(response, meta_program, expected_objects=available_object_labels))
         else:
             # Format sub-arrangements context with sizes
             arrangement_context = "Available sub-arrangements:\\n"
@@ -51,6 +54,9 @@ async def generate_arrangement(inference_session, motif_type, meta_program,
                 arrangement_context = "No sub-arrangements available"
                 
             # Use hierarchical inference for non-leaf nodes
+            # Get list of available objects (those with meshes)
+            available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'mesh') and obj.mesh is not None]
+
             function_call_response = inference_session.send_with_validation("inference_hierarchical",
                 {
                     "motif_type": motif_type,
@@ -59,7 +65,8 @@ async def generate_arrangement(inference_session, motif_type, meta_program,
                     "furniture_info": [f"{obj.label} (half_dimensions: {tuple(np.round(d, 3) for d in obj.bounding_box.half_size)})" for obj in furniture_objs],
                     "arrangement_context": arrangement_context
                 }, lambda response: inference_validation(response, meta_program,
-                                                                   variables={"sub_arrangements": sub_arrangements}),
+                                                                   variables={"sub_arrangements": sub_arrangements},
+                                                                   expected_objects=available_object_labels),
                 verbose=True)
         
         extracted_code = gpt.extract_code(function_call_response)

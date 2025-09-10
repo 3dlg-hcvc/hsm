@@ -4,6 +4,7 @@ import trimesh
 import numpy as np
 import pickle
 from copy import deepcopy
+import logging
 
 from .obj import Obj
 from .bounding_box import BoundingBox
@@ -144,9 +145,9 @@ class Arrangement:
             self.center()
             self.to_scene().export(file_path)
             self.glb_path = file_path
-            print(f"Arrangement saved to {file_path}")
+            logging.info(f"Arrangement saved to {file_path}")
         except Exception as e:
-            print(f"Error saving arrangement to {file_path}: {e}")
+            logging.error(f"Error saving arrangement to {file_path}: {e}")
             raise
 
     def save_pickle(self, file_path: str = "saved_arrangement.pkl") -> None:
@@ -158,7 +159,7 @@ class Arrangement:
         """
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
-        print(f"Arrangement saved to {file_path}")
+        logging.info(f"Arrangement saved to {file_path}")
 
     @staticmethod
     def load_pickle(file_path: str) -> Arrangement:
@@ -180,16 +181,20 @@ class Arrangement:
 
     def __getstate__(self):
         """Customize serialization to exclude mesh data."""
+        # create a safe copy for pickling
         state = self.__dict__.copy()
-        
-        # Store mesh paths and geometry names for each object
-        for obj in state['objs']:
-            if hasattr(obj, 'mesh') and obj.mesh is not None:
-                # Store the mesh path and geometry name
-                obj._mesh_path = obj.mesh_path
-                obj._geom_name = obj.label
-                obj.mesh = None
-        
+        safe_objs = []
+        for obj in self.objs:
+            try:
+                obj_copy = deepcopy(obj)
+                if hasattr(obj_copy, 'mesh') and obj_copy.mesh is not None:
+                    setattr(obj_copy, '_mesh_path', getattr(obj_copy, 'mesh_path', None))
+                    setattr(obj_copy, '_geom_name', getattr(obj_copy, 'label', None))
+                    obj_copy.mesh = None
+                safe_objs.append(obj_copy)
+            except Exception:
+                safe_objs.append(obj)
+        state['objs'] = safe_objs
         return state
 
     def __setstate__(self, state):

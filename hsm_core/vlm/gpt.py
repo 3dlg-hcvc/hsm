@@ -1,7 +1,6 @@
 from __future__ import annotations
 import base64
 import io
-import logging
 import os
 import pathlib
 from typing import Any, Callable, List, Union
@@ -44,7 +43,10 @@ class Session:
             
         load_dotenv()
         client = OpenAI()
-        
+
+        from hsm_core.utils import get_logger
+        self.logger = get_logger('vlm.session')
+
         self.prompts_dir = prompts_path
         self.predefined_prompts = self._load_prompts(prompts_path)
         
@@ -55,9 +57,9 @@ class Session:
                 placeholder = f"<{key.upper()}>"
                 if placeholder in system_prompt:
                     system_prompt = system_prompt.replace(placeholder, str(value))
-                    print(f"$ --- Initialized system prompt with {key}")
+                    self.logger.debug(f"Initialized system prompt with {key}: {value}")
                 else:
-                    print(f"$ --- Warning: Placeholder {placeholder} not found in system prompt")
+                    self.logger.warning(f"Placeholder {placeholder} not found in system prompt")
             self.predefined_prompts["system"] = system_prompt
             
         self.client = client
@@ -74,9 +76,6 @@ class Session:
         
         prompts_path = pathlib.Path(self.prompts_dir)
         self._session_filename = f"{self.output_dir}/session_{prompts_path.stem}.txt"
-        
-        if self.output_dir:
-            pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         
     def _load_prompts(self, prompts_file: str) -> dict[str, str]:
         """
@@ -109,7 +108,7 @@ class Session:
         self.past_responses = []
     
     def send(self, task: str, prompt_info: dict[str, str] | None = None, 
-             info_validate: bool = True, json: bool = False, verbose: bool = False, 
+             info_validate: bool = True, is_json: bool = False, verbose: bool = False, 
              images: Union[str, Figure, List[Union[str, Figure]], None] = None,
              image_detail: str = "high", append_text: str = "") -> str:
         """
@@ -130,7 +129,7 @@ class Session:
             response: string, the response from the model
         """
 
-        print(f"$ --- Sending task: {task}")
+        self.logger.debug(f"Sending task: {task}")
         self.past_tasks.append(task)
         prompt = self._make_prompt(task, prompt_info, info_validate)
         if append_text:
@@ -143,11 +142,13 @@ class Session:
                 num_images = 1
         else:
             num_images = 0
-        print(f"$ --- Past messages: {len(self.past_messages)} Prompt length: {len(prompt)} with {num_images} images")
-        print(f"$ --- Prompt:\n{prompt}\n") if verbose else None
-        self._send(prompt, json, images, image_detail)
+        self.logger.debug(f"Past messages: {len(self.past_messages)} Prompt length: {len(prompt)} with {num_images} images")
+        if verbose:
+            self.logger.debug(f"Prompt:\n{prompt}")
+        self._send(prompt, is_json, images, image_detail)
         response = self.past_responses[-1]
-        print(f"$ --- Response:\n{response}\n")
+        if verbose:
+            self.logger.debug(f"Response:\n{response}")
 
         return response
     
@@ -157,7 +158,7 @@ class Session:
                              retry: int = RETRY_COUNT,
                              images: Union[str, Figure, List[Union[str, Figure]], None] = None,
                              image_detail: str = "high",
-                             json: bool = False,
+                             is_json: bool = False,
                              verbose: bool = False) -> str:
         """
         Send a message of a specific task and return the response after validating it.
@@ -177,22 +178,22 @@ class Session:
         """
         
         response = self.send(task, prompt_info, images=images, image_detail=image_detail, 
-                          json=json, verbose=verbose)
+                          is_json=is_json, verbose=verbose)
         
         count = 0
-        while count < retry:
+        while count <= retry:
             if validation is not None:
                 valid, error_message, error_index = validation(response)
 
-                # Retry starts here
                 if not valid:
-                    print(f"$ --- Validation failed for task {task} at try {count+1}")
+                    self.logger.info(f"Validation failed for task {task} at try {count+1}")
+                    # Skip logging WN synset key validation errors
                     if error_message and not error_message.startswith("The WordNet synset key"):
-                        print(f"$ --- Error message: {error_message}")
-                    
-                    count += 1
+                        self.logger.info(f"Validation error: {error_message}")
+
                     if count < retry:
-                        print(f"$ --- Retrying task {task} [try {count+1} / {retry}]\n")
+                        count += 1
+                        self.logger.info(f"Retrying task {task} [try {count+1} / {retry}]")
                         # Get the specific retry prompt if available (by order of appearance in the prompts file)
                         retry_prompt_keys = [key for key in self.predefined_prompts.keys() if task in key and "feedback" in key]
                         if retry_prompt_keys:
@@ -200,18 +201,22 @@ class Session:
                         else:
                             # If there is no specific retry prompt, use the generic one
                             retry_task_name = "invalid_response"
-                        
-                        response = self.send(retry_task_name, {"feedback": error_message})
+
+                        response = self.send(retry_task_name, {"feedback": error_message}, is_json=is_json)
+                        # Continue to next iteration for validation
+                    else:
+                        # No more retries available
+                        break
                 else:
-                    print(f"$ --- Validation passed for task {task} at try {count+1}\n")
+                    self.logger.info(f"Validation passed for task {task} at try {count+1}")
                     break
             else:
                 break  # No validation function, assume valid
 
-        if count == retry:
+        if count >= retry:
             raise RuntimeError(f"$ --- Validation failed for task {task} after {retry} retries")
 
-        return extract_json(response) if json else response
+        return response
     
     def _make_prompt(self, task: str, prompt_info: dict[str, str] | None, info_validate: bool = True) -> str:
         """
@@ -257,7 +262,7 @@ class Session:
             buf.seek(0)
             img = Image.open(buf)
         else:
-            logging.debug(f"Unsupported image type: {type(image_or_path)}, value: {image_or_path}")
+            self.logger.debug(f"Unsupported image type: {type(image_or_path)}, value: {image_or_path}")
             raise ValueError(f"Warning: Unsupported image type: {type(image_or_path)}. Please provide a file path or a matplotlib Figure.")
 
         # Optimize image size based on detail level
@@ -309,7 +314,7 @@ class Session:
                 try:
                     image_base64 = self._encode_image(image, detail=image_detail)
                 except ValueError as exc:
-                    logging.warning(
+                    self.logger.warning(
                         "Skipping unsupported image in _send (type=%s): %s", type(image), exc
                     )
                     continue
@@ -351,8 +356,8 @@ class Session:
                 self.past_messages.append({"role": "assistant", "content": response})
                 self.past_responses.append(response)
                 return
-                
-            print(f"Received None response, retrying... (Attempt {retries + 1}/{max_retries})")
+
+            self.logger.info(f"Received None response, retrying... (Attempt {retries + 1}/{max_retries})")
             retries += 1
             
         raise RuntimeError(f"Failed to get a valid response after {max_retries} attempts")
@@ -368,6 +373,9 @@ class Session:
         Returns:
             str: Path to the saved session file
         """
+        if self.output_dir:
+            pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+            
         if filename is None:
             prompts_path = pathlib.Path(self.prompts_dir)
             filename = f"session_{prompts_path.stem}.json"
@@ -423,7 +431,7 @@ class Session:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(session_data, f, indent=2, ensure_ascii=False)
             
-        # print(f"Session saved to {filename}")
+        # Session saved successfully
         return filename
 
     def get_session_token_usage(self):

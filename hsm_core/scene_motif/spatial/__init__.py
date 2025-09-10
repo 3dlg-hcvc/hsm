@@ -20,8 +20,8 @@ def optimize_sm(arrangement, hierarchy=None, **kwargs):
     # Check if any objects have meshes before attempting optimization
     objs_with_meshes = [obj for obj in arrangement.objs if hasattr(obj, 'has_mesh') and obj.has_mesh]
     if not objs_with_meshes:
-        import logging
-        logger = logging.getLogger(__name__)
+        from hsm_core.utils import get_logger
+        logger = get_logger('scene_motif.spatial')
         logger.debug(f"Skipping spatial optimization - no objects have meshes. Objects: {[obj.label for obj in arrangement.objs]}")
         return arrangement  # Return unchanged arrangement
 

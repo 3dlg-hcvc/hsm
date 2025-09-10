@@ -2,11 +2,7 @@
 Retrieval Factory
 """
 
-from types import CoroutineType
-
-
-import logging
-from typing import Callable, List, Dict, Optional, Any, TYPE_CHECKING
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 
 from hsm_core.scene.core.objecttype import ObjectType
@@ -14,7 +10,8 @@ from hsm_core.scene.core.objecttype import ObjectType
 if TYPE_CHECKING:
     from hsm_core.scene_motif.core.obj import Obj
 
-logger = logging.getLogger(__name__)
+from hsm_core.utils import get_logger
+logger = get_logger('retrieval.core.adaptive')
 
 try:
     from ..server import ServerRetrievalClient, RetrievalServerError
@@ -67,11 +64,11 @@ async def retrieve_adaptive(
     if SERVER_AVAILABLE and isinstance(model, ServerRetrievalClient):
         server_retrieval_client = model
         local_model = None
-        logger.info("Using server retrieval")
+        logger.debug("Using server retrieval")
     else:
         server_retrieval_client = None
         local_model = model
-        logger.info("Using local retrieval")
+        logger.debug("Using local retrieval")
 
     try:
         await retrieve(

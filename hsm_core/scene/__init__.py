@@ -2,16 +2,18 @@
 HSM Core Scene Module
 """
 
-from .setup import initialize_scene_from_config, perform_room_analysis_and_decomposition
-from .large import process_large_objects
-from .wall import process_wall_objects
-from .ceiling import process_ceiling_objects
-from .small import process_small_objects
-from .manager import Scene
-from .motif import SceneMotif
-from .objects import SceneObject
+from .setup.setup import initialize_scene_from_config, perform_room_analysis_and_decomposition
+from .processing.large import process_large_objects
+from .processing.wall import process_wall_objects
+from .processing.ceiling import process_ceiling_objects
+from .processing.small import process_small_objects
+from .processing.scene_pipeline import setup_scene_generation, create_processing_pipeline, process_cleanup_stage
+from .core.manager import Scene
+from .core.motif import SceneMotif
+from .core.objects import SceneObject
 from .core.objecttype import ObjectType
-from .spec import ObjectSpec, SceneSpec
+from .core.spec import ObjectSpec, SceneSpec
+from .geometry.cutout import Cutout
 
 __all__ = [
     'initialize_scene_from_config',
@@ -25,5 +27,9 @@ __all__ = [
     'SceneObject',
     'ObjectType',
     'SceneSpec',
-    'ObjectSpec'
+    'ObjectSpec',
+    'Cutout',
+    'setup_scene_generation',
+    'create_processing_pipeline',
+    'process_cleanup_stage'
 ]

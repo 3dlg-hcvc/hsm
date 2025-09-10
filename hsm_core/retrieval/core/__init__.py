@@ -2,9 +2,9 @@
 Core retrieval functionality for HSM scene generation.
 """
 
-import logging
+from hsm_core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.core')
 
 from .main import retrieve
 from .adaptive_retrieval import retrieve_adaptive

@@ -1,7 +1,7 @@
-import logging
 import numpy as np
 import trimesh
 from typing import List, Optional
+from hsm_core.utils import get_logger
 
 from .constants import (
     VERTICAL_SEARCH_MARGIN,
@@ -10,8 +10,7 @@ from .constants import (
     MIN_SEPARATION,
 )
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = get_logger('support_region.geometry')
 
 def calculate_surface_segments(
     geometries,

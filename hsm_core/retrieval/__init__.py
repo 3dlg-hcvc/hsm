@@ -2,9 +2,9 @@
 Retrieval Module for HSM
 """
 
-import logging
+from hsm_core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval')
 
 from .core.main import retrieve
 from .core.adaptive_retrieval import retrieve_adaptive

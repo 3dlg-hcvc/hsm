@@ -6,7 +6,6 @@ This module contains the core retrieval logic.
 
 import random
 import torch
-import logging
 from typing import List, Dict, Set, Optional, Tuple, TYPE_CHECKING
 from pathlib import Path
 from copy import deepcopy
@@ -18,8 +17,9 @@ from ..utils.similarities import compute_similarities
 from ..utils.retriever_helpers import process_mesh_candidate, sort_candidates_by_quality, apply_mesh_to_object
 from ..utils.mesh_paths import construct_hssd_mesh_path
 from ..data.data_utils import _load_hssd_alignment_data, get_fallback_mesh_ids
+from hsm_core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.core.logic')
 
 from .adaptive_retrieval import SERVER_AVAILABLE
 if TYPE_CHECKING and SERVER_AVAILABLE:
@@ -39,7 +39,7 @@ async def _compute_similarities_shared(
 ):
     """Shared function to compute similarities through the appropriate backend."""
     if server_retrieval_client is not None:
-        # Delegate to ServerRetrievalClient (local or server-based)
+        # Delegate to ServerRetrievalClient
         try:
             return await server_retrieval_client.get_hssd_similarities(
                 texts=texts,
@@ -77,7 +77,7 @@ def _log_top_meshes_verbose(
                 similarity_tensor_idx = best_similarity_indices_per_obj[obj_idx][i]
                 file_name_mesh_id = final_filtered_mesh_ids_for_similarities[obj_idx][similarity_tensor_idx]
                 mesh_path_to_print = construct_hssd_mesh_path(hssd_dir_path, file_name_mesh_id)
-                logger.debug(f"{i+1}. {mesh_path_to_print} (similarity score: {similarities_list_per_obj[obj_idx][similarity_tensor_idx]:.4f})")
+                logger.debug(f"  {i+1}. {mesh_path_to_print} (similarity score: {similarities_list_per_obj[obj_idx][similarity_tensor_idx]:.4f})")
             except IndexError:
                 logger.debug(f"  Error accessing index {i} for {obj_iter.label}")
                 break
@@ -148,7 +148,7 @@ async def run_primary_retrieval(
         )
 
         if filtered_similarities is None or filtered_similarities.shape[1] == 0:
-            logger.warning(f"No meshes found matching description '{obj_desc_iter}' within WN key filter.")
+            logger.info(f"No meshes found matching description '{obj_desc_iter}' within WN key filter.")
             similarities_list_per_obj.append(torch.tensor([], device=filtered_similarities.device if filtered_similarities is not None else 'cpu'))
             final_filtered_mesh_ids_for_similarities.append([])
         else:
@@ -179,7 +179,7 @@ async def run_primary_retrieval(
         top_candidates_for_obj = []
 
         if obj_idx >= len(best_similarity_indices_per_obj) or not best_similarity_indices_per_obj[obj_idx].numel() > 0:
-            logger.warning(f"No similarity results found for object {obj_iter.label}. Will attempt fallback.")
+            logger.info(f"No similarity results found for object {obj_iter.label}. Will attempt fallback.")
         else:
             num_similar_for_obj = len(best_similarity_indices_per_obj[obj_idx])
             for k_rank in range(num_similar_for_obj):
@@ -303,90 +303,43 @@ async def handle_fallback_retrieval(
         )
 
         if not fallback_mesh_ids_to_try:
-            logger.warning(f"Fallback: No mesh IDs found for specific WN key or object type '{object_type.name}'. Cannot perform fallback for '{obj_fb_iter.label}'.")
+            logger.info(f"Fallback: No mesh IDs found for specific WN key or object type '{object_type.name}'. Cannot perform fallback for '{obj_fb_iter.label}'.")
             continue
 
         best_fallback_candidates = []
         for search_type, mesh_ids_set in fallback_mesh_ids_to_try:
-            logger.info(f"Fallback: Trying {search_type} search for '{obj_fb_iter.description or obj_fb_iter.label}' among {len(mesh_ids_set)} meshes.")
-
-            fb_similarities, fb_scored_mesh_ids = await _compute_similarities_shared(
-                [obj_fb_iter.description or obj_fb_iter.label],
-                list(mesh_ids_set),
-                server_retrieval_client,
-                model_instance,
-                tokenizer
-            )
-
             current_fallback_candidates = []
-            if fb_similarities is not None and fb_similarities.shape[1] > 0:
-                fb_similarity_scores_for_obj = fb_similarities[0]
-                fb_best_indices_for_scores = (-fb_similarity_scores_for_obj).argsort()
 
-                num_fb_to_check = min(use_top_k, len(fb_best_indices_for_scores))
-                for k_fb_rank_idx in range(num_fb_to_check):
-                    fb_score_tensor_idx = fb_best_indices_for_scores[k_fb_rank_idx]
-                    fb_mesh_id_to_load = fb_scored_mesh_ids[fb_score_tensor_idx]
+            logger.info(f"Fallback: {search_type} search found no similar meshes for '{obj_fb_iter.label}'. Trying direct mesh loading...")
+            for mesh_id_direct in list(mesh_ids_set)[:use_top_k]:  # Try up to use_top_k meshes
+                if avoid_used and mesh_id_direct in used_indices:
+                    continue
 
-                    if avoid_used and fb_mesh_id_to_load in used_indices:
-                        continue
+                fb_mesh_path_direct = construct_hssd_mesh_path(hssd_dir_path, mesh_id_direct)
+                if not fb_mesh_path_direct.exists():
+                    continue
 
-                    fb_mesh_path_to_load = construct_hssd_mesh_path(hssd_dir_path, fb_mesh_id_to_load)
-                    if not fb_mesh_path_to_load.exists():
-                        continue
+                # Process direct mesh candidate
+                fb_candidate_result_direct = process_mesh_candidate(
+                    obj_fb_iter,
+                    fb_mesh_path_direct,
+                    mesh_id_direct,
+                    object_type,
+                    _load_hssd_alignment_data(),
+                    max_height,
+                    support_surface_constraints,
+                )
 
-                    fb_candidate_result = process_mesh_candidate(
-                        obj_fb_iter,
-                        fb_mesh_path_to_load,
-                        fb_mesh_id_to_load,
-                        object_type,
-                        _load_hssd_alignment_data(),
-                        max_height,
-                        support_surface_constraints
-                    )
+                if fb_candidate_result_direct is not None:
+                    # Use a default CLIP score of 0.0 for direct loading
+                    extended_result_direct = fb_candidate_result_direct + (0.0, search_type)
+                    current_fallback_candidates.append(extended_result_direct)
+                    logger.debug(f"Direct loading successful for mesh {mesh_id_direct}")
 
-                    if fb_candidate_result is not None:
-                        fb_clip_score_val = fb_similarity_scores_for_obj[fb_score_tensor_idx].item()
-                        extended_result = fb_candidate_result + (fb_clip_score_val, search_type)
-                        current_fallback_candidates.append(extended_result)
-
-                if current_fallback_candidates:
-                    logger.info(f"Fallback: Found {len(current_fallback_candidates)} valid candidates from {search_type} search")
-                    best_fallback_candidates.extend(current_fallback_candidates)
-                    break
-            else:
-                logger.warning(f"Fallback: {search_type} search found no similar meshes for '{obj_fb_iter.label}'. Trying direct mesh loading...")
-
-                # Direct mesh loading fallback when embeddings are not available
-                for mesh_id_direct in list(mesh_ids_set)[:use_top_k]:  # Try up to use_top_k meshes
-                    if avoid_used and mesh_id_direct in used_indices:
-                        continue
-
-                    fb_mesh_path_direct = construct_hssd_mesh_path(hssd_dir_path, mesh_id_direct)
-                    if not fb_mesh_path_direct.exists():
-                        continue
-
-                    # Process direct mesh candidate
-                    fb_candidate_result_direct = process_mesh_candidate(
-                        obj_fb_iter,
-                        fb_mesh_path_direct,
-                        mesh_id_direct,
-                        object_type,
-                        _load_hssd_alignment_data(),
-                        max_height,
-                        support_surface_constraints,
-                    )
-
-                    if fb_candidate_result_direct is not None:
-                        # Use a default CLIP score of 0.0 for direct loading
-                        extended_result_direct = fb_candidate_result_direct + (0.0, search_type)
-                        current_fallback_candidates.append(extended_result_direct)
-                        logger.debug(f"Direct loading successful for mesh {mesh_id_direct}")
-
-                if current_fallback_candidates:
-                    logger.info(f"Fallback: Found {len(current_fallback_candidates)} valid candidates from direct {search_type} loading")
-                    best_fallback_candidates.extend(current_fallback_candidates)
-                    break
+            if current_fallback_candidates:
+                logger.info(f"Fallback: Found {len(current_fallback_candidates)} valid candidates from direct {search_type} loading")
+                best_fallback_candidates.extend(current_fallback_candidates)
+                break
 
         if best_fallback_candidates:
             # Sort by search type priority, then by penalized status, bbox score, and clip score
@@ -417,11 +370,11 @@ async def handle_fallback_retrieval(
                         "rotation_info": fb_selected_rotation_info
                     }
         else:
-            logger.warning(f"Fallback: No loadable/optimizable candidates found for '{obj_fb_iter.label}' from any fallback search type.")
+            logger.info(f"Fallback: No loadable/optimizable candidates found for '{obj_fb_iter.label}' from any fallback search type.")
 
     for obj_fb_iter in unassigned_objs:
         if obj_fb_iter.mesh is None:
-            logger.warning(f"Still no mesh for '{obj_fb_iter.label}' after primary and fallback attempts.")
+            logger.warning(f"Unable to find mesh for '{obj_fb_iter.label}' after primary and fallback attempts.")
 
 
 def _collect_fallback_mesh_ids(

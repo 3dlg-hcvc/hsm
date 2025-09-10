@@ -6,13 +6,13 @@ including WordNet synset key filtering and category-based filtering.
 """
 
 import json
-import logging
 from typing import List, Optional, Dict, Tuple, Set
+from hsm_core.utils import get_logger
 
 from hsm_core.scene.core.objecttype import ObjectType
 from hsm_core.config import DATA_PATH
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.data.utils')
 
 
 _HSSD_ALIGNMENT_DATA: Optional[Dict] = None

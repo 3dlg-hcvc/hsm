@@ -9,6 +9,7 @@ LIB_META_PROGRAMS_DIR = PROJECT_ROOT / "data" / "motif_library" / "meta_programs
 LIB_META_PROGRAMS_DIR.mkdir(parents=True, exist_ok=True)
 
 from ..programs.program import Program
+from hsm_core.utils import get_logger
 
 
 def load(motif_type: str, program_id: int | None = None, is_meta: bool = False) -> list[Program]:
@@ -53,4 +54,5 @@ def length(motif_type: str, is_meta: bool = False) -> int:
 
 if __name__ == "__main__":
     programs = load("row", is_meta=True)
-    print(programs[0].definition_with_docstring())
+    logger = get_logger('hsm_core.scene_motif.library')
+    logger.info(programs[0].definition_with_docstring())

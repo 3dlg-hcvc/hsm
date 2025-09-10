@@ -1,9 +1,9 @@
 import json
-import logging
 import yaml
 import traceback
 from typing import Tuple, Dict, Optional, List
 from copy import deepcopy
+from hsm_core.utils import get_logger
 
 import hsm_core.vlm.gpt as gpt
 from hsm_core.scene_motif.programs import validator
@@ -14,7 +14,7 @@ from ..programs.program import Program
 from hsm_core.config import PROMPT_DIR
 MOTIF_DEFINITIONS_PATH = PROMPT_DIR / "motif_definitions.yaml"
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.utils.validation')
 
 try:
     with open(MOTIF_DEFINITIONS_PATH, 'r', encoding='utf-8') as f:
@@ -231,13 +231,13 @@ def validate_compositional_json(response: str) -> tuple[bool, str, int]:
 
 def inference_validation(response: str, meta_program: Program, variables: Optional[dict] = None, expected_objects: Optional[List[str]] = None) -> tuple[bool, str, int]:
     """
-    Validate the inference response by checking syntax and object name matching.
+    Validate the inference response by checking syntax and object availability.
 
     Args:
         response (str): The response string from the VLM
         meta_program (Program): The meta-program being used
         variables (dict): Available variables for validation
-        expected_objects (list, optional): List of expected object labels to validate against
+        expected_objects (list, optional): List of available object labels that the VLM is allowed to use
 
     Returns:
         tuple[bool, str, int]:
@@ -260,7 +260,7 @@ def inference_validation(response: str, meta_program: Program, variables: Option
         if not valid:
             return False, f"Syntax error: {error_message}", 0
 
-        # If expected_objects is provided, validate object name matching
+        # If expected_objects is provided, validate that only available objects are used
         if expected_objects is not None:
             try:
                 # Execute the program to get the created objects
@@ -278,41 +278,32 @@ def inference_validation(response: str, meta_program: Program, variables: Option
                     elif isinstance(obj, dict) and 'label' in obj:
                         created_labels.append(obj['label'].lower())
 
-                # Extract expected labels (normalize to lowercase)
-                expected_labels = [label.lower() for label in expected_objects]
+                # Extract available labels (normalize to lowercase)
+                available_labels = [label.lower() for label in expected_objects]
 
-                # Check if all expected objects are present in created objects
-                missing_objects = []
-                for expected_label in expected_labels:
-                    # Check for exact match or partial match
-                    found = False
-                    for created_label in created_labels:
-                        if expected_label == created_label or expected_label in created_label or created_label in expected_label:
-                            found = True
-                            break
-                    if not found:
-                        missing_objects.append(expected_label)
-
-                if missing_objects:
-                    return False, f"Program does not create expected objects: {', '.join(missing_objects)}. Created objects: {', '.join(created_labels)}", 0
-
-                # Check for unexpected objects that don't match any expected objects
-                unexpected_objects = []
+                # Check for unavailable objects that are referenced in the generated code
+                unavailable_objects = []
                 for created_label in created_labels:
+                    # Skip sub_arrangement references as they're handled separately
+                    if created_label.startswith('sub_arrangements['):
+                        continue
+
                     found = False
-                    for expected_label in expected_labels:
-                        if expected_label == created_label or expected_label in created_label or created_label in expected_label:
+                    for available_label in available_labels:
+                        # Exact match only
+                        if available_label == created_label:
                             found = True
                             break
-                    if not found:
-                        unexpected_objects.append(created_label)
 
-                if unexpected_objects:
-                    return False, f"Program creates unexpected objects: {', '.join(unexpected_objects)}. Expected objects: {', '.join(expected_labels)}", 0
+                    if not found:
+                        unavailable_objects.append(created_label)
+
+                if unavailable_objects:
+                    return False, f"Program references unavailable objects: {', '.join(unavailable_objects)}. Available objects: {', '.join(available_labels)}", 0
 
             except Exception as obj_validation_error:
                 # Log the error but don't fail validation - mesh issues shouldn't break optimization
-                logger.warning(f"Object validation failed (continuing anyway): {obj_validation_error}")
+                logger.warning(f"Object availability validation failed (continuing anyway): {obj_validation_error}")
                 # Continue without failing - this prevents mesh-related optimization breaks
 
         return True, "", -1

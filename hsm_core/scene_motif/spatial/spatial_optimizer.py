@@ -1,12 +1,14 @@
 import time
-import logging
 import trimesh
 import trimesh.sample
 import numpy as np
 from copy import deepcopy
+from hsm_core.utils import get_logger
 from hsm_core.scene_motif.core.arrangement import Arrangement
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.spatial.spatial_optimizer')
+
+
 
 def optimize(
     arrangement: Arrangement,

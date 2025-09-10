@@ -1,13 +1,13 @@
 import json
-import logging
 import os
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict, TYPE_CHECKING
+from hsm_core.utils import get_logger
 
 import hsm_core.vlm.gpt as gpt
 from ..core.arrangement import Arrangement
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.utils.saving')
 
 if TYPE_CHECKING:
     from hsm_core.scene.specifications.object_spec import ObjectSpec

@@ -28,7 +28,6 @@ from .validation import (
     is_sm_exceeds_support_region,
     inference_validation,
 )
-from .logger import MotifLogger
 from .llm_async_utils import send_llm_async, send_llm_with_validation_async, send_llm_with_images_async
 from .library import (
     load,
@@ -53,7 +52,6 @@ __all__ = [
     'inference_validation',
 
     # Logging
-    'MotifLogger',
 
     # Library functions
     'load',

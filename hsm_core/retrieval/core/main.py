@@ -3,8 +3,7 @@ Main Retrieval Module
 """
 
 import numpy as np
-import logging
-from typing import List, Dict, Set, Optional, TYPE_CHECKING
+from typing import List, Dict, Optional, TYPE_CHECKING
 from pathlib import Path
 
 from hsm_core.scene_motif.core.obj import Obj
@@ -12,12 +11,12 @@ from hsm_core.scene.core.objecttype import ObjectType
 from hsm_core.retrieval.model.model_manager import ModelManager
 from hsm_core.config import HSSD_PATH
 
-from ..data.data_utils import filter_hssd_categories
 from ..data.wn_retrieval import prepare_and_filter_candidates
 from .retrieval_logic import run_primary_retrieval, handle_fallback_retrieval
 from ..utils.result_handlers import apply_and_log_results
+from hsm_core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.core.main')
 np.random.seed(42)
 
 from .adaptive_retrieval import SERVER_AVAILABLE
@@ -100,4 +99,4 @@ if __name__ == "__main__":
     from hsm_core.retrieval.data_utils import filter_hssd_categories
     categories_main = filter_hssd_categories(ObjectType.WALL)
     obj_description_example = ["lamp"]
-    print("Example filtering for WALL objects:", categories_main[:5])
+    logger.info(f"Example filtering for WALL objects: {categories_main[:5]}")

@@ -1,15 +1,15 @@
-import logging
-from pathlib import Path as PathLib
+from pathlib import Path
 import numpy as np
 import trimesh
 from compress_json import compress_json
 from dotenv import load_dotenv
-from typing import Optional, Tuple, Dict, Any, Union
+from typing import Optional, Tuple, Dict, Any
+from hsm_core.utils import get_logger
 
 load_dotenv()
-from hsm_core.config import HSSD_PATH, PROJECT_ROOT
+from hsm_core.config import HSSD_PATH
 SUPPORT_DIR = HSSD_PATH / "support-surfaces"
-logger = logging.getLogger(__name__)
+logger = get_logger('support_region.loader')
 
 def check_support_json_exists(id: str) -> bool:
     if not SUPPORT_DIR:
@@ -33,15 +33,14 @@ def load_support_surface(id: str) -> Optional[Tuple[trimesh.Scene, Dict[str, Any
     image_path = str(SUPPORT_DIR / id / f"{id}.supportSurface.png")
     
     try:
-        # Force loading as a scene to handle both single and multi-geometry files consistently.
         scene = trimesh.load(mesh_path, force='scene')
         data = compress_json.load(str(json_path))
     except Exception as e:
         logger.error(f"Failed to load support surface data for {id}: {e}", exc_info=True)
         return None, None, None
 
-    logger.info(f"Loading support mesh: {mesh_path}")
-    logger.info(f"Loading support surface data from: {json_path}")
+    logger.debug(f"Loading support mesh: {mesh_path}")
+    logger.debug(f"Loading support surface data from: {json_path}")
     
     return scene, data, image_path
 

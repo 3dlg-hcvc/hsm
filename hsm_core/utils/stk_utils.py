@@ -1,10 +1,10 @@
 import json
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 from hsm_core.constants import WALL_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_BOTTOM_HEIGHT, DOOR_WIDTH, DOOR_HEIGHT
-from hsm_core.scene.scene_3d import Cutout
+from hsm_core.scene.geometry.cutout import Cutout
 from hsm_core.utils.util import numpy_to_python
+from hsm_core.utils import get_logger
 
 def sv_fix_coordinates(raw_scene: dict) -> dict:
     # match coordinate system for sceneeval
@@ -131,11 +131,11 @@ def save_stk_scene_state(objects, room_vertices, door_location, output_dir, wind
         # path = output_dir / filename
         # with open(str(path), 'w') as f:
             # json.dump(scene_state, f, indent=4)
-        # print(f"Scene state saved to {path} with {len(scene_state['scene']['object'])} objects")
+        # Scene state saving can be enabled if needed
     except Exception as e:
         import traceback
         traceback.print_exc()
-        # print(f"Error saving scene state to {path}: {e}")
+        # Error logging can be enabled if needed
 
     #########################################################
     # match coordinate system for scene eval
@@ -167,7 +167,8 @@ def save_stk_scene_state(objects, room_vertices, door_location, output_dir, wind
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"Error saving scene state to {path}: {e}")
+        logger = get_logger('hsm_core.utils.stk_utils')
+        logger.error(f"Error saving scene state to {path}: {e}")
 
 def create_stk_arch(room_vertices, door_location, window_locations=None):
     """
@@ -262,7 +263,7 @@ def create_stk_arch(room_vertices, door_location, window_locations=None):
                     "max": [dist_from_start + door_cutout.width / 2, door_cutout.height]
                 }
             })
-            # print(f"Added door to wall {i} at distance {dist_from_start}")
+            # Door addition debug logging can be enabled if needed
         elif door_point is not None and not door_cutout:
             # Fallback to old method if door_cutout is not provided
             if is_point_on_line_segment(door_point, start, end, tolerance=0.2):
@@ -275,7 +276,7 @@ def create_stk_arch(room_vertices, door_location, window_locations=None):
                         "max": [dist_from_start + DOOR_WIDTH / 2, DOOR_HEIGHT]
                     }
                 })
-                # print(f"Added door to wall {i} at distance {dist_from_start} (fallback method)")
+                # Door addition debug logging can be enabled if needed
         
         # Add window holes if this wall segment contains any windows
         window_count = 0
@@ -295,7 +296,7 @@ def create_stk_arch(room_vertices, door_location, window_locations=None):
                         }
                     })
                     window_count += 1
-                    # print(f"Added window {window_count} to wall {i} at distance {dist_from_start}")
+                    # Window addition debug logging can be enabled if needed
         elif window_points:
             # Fallback to old method if window_cutouts are not provided
             for idx, window_point in enumerate(window_points):
@@ -312,7 +313,7 @@ def create_stk_arch(room_vertices, door_location, window_locations=None):
                         }
                     })
                     window_count += 1
-                    print(f"Added window {window_count} to wall {i} at distance {dist_from_start} (fallback method)")
+                    logger.debug(f"Added window {window_count} to wall {i} at distance {dist_from_start} (fallback method)")
         
         arch_data["elements"].append(wall)
 

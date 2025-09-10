@@ -1,6 +1,6 @@
 # Scene Motif Module
 
-Self-contained motif generation, processing, and spatial optimization for HSM.
+Scene motif generation, processing, and spatial optimization for HSM.
 Some code adapted from SceneMotifCoder (SMC).
 
 ## File Structure
@@ -33,7 +33,7 @@ data/
     └── meta_programs/ # Meta-programs for motif types
 ```
 
-## Run Test
+## Run Tests
 ```bash
 python -m hsm_core.scene_motif.generation.processing.batch_inference 
 ```

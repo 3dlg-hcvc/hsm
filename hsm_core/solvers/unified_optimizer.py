@@ -7,23 +7,22 @@ and support validation.
 
 import copy
 import time
-import logging
 from typing import List, Dict, Optional, Tuple, Set, TYPE_CHECKING, Union
 import numpy as np
-from logging import Logger
 import trimesh
 import trimesh.transformations
 from pathlib import Path
 
-from hsm_core.scene.scene_3d import SceneObjectPlacer
-from hsm_core.scene.objects import SceneObject
+from hsm_core.scene.geometry.placer import SceneObjectPlacer
+from hsm_core.scene.core.objects import SceneObject
 from hsm_core.scene.core.objecttype import ObjectType
 from hsm_core.solvers.config import SceneSpatialOptimizerConfig
+from hsm_core.utils import get_logger
 
 if TYPE_CHECKING:
-    from hsm_core.scene.manager import Scene
+    from hsm_core.scene.core.manager import Scene
 
-logger: Logger = logging.getLogger(__name__)
+logger = get_logger('solvers.unified_optimizer')
 
 class SceneSpatialOptimizer:
     """
@@ -36,25 +35,30 @@ class SceneSpatialOptimizer:
     def __init__(self, scene: 'Scene', config: Optional[SceneSpatialOptimizerConfig] = None):
         """
         Initialize the mesh-based spatial optimizer.
-        
+
         Args:
             scene: Scene object containing motifs and room geometry.
             config: Configuration for spatial optimization.
         """
         self.scene = scene
         self.config = config or SceneSpatialOptimizerConfig()
-        
-        # Mesh caches for performance
-        self._object_meshes: Dict[str, trimesh.Trimesh] = {}
+
+        # Use shared mesh cache from scene if available, otherwise create own cache
+        if hasattr(scene, '_mesh_cache') and scene._mesh_cache is not None:
+            self._object_meshes = scene._mesh_cache
+            self._use_shared_cache = True
+        else:
+            self._object_meshes: Dict[str, trimesh.Trimesh] = {}
+            self._use_shared_cache = False
+
         self._base_object_meshes: Dict[str, trimesh.Trimesh] = {}  # Immutable base meshes
         self._room_scene: Optional[trimesh.Scene] = None
         self._floor_mesh: Optional[trimesh.Trimesh] = None
         self._wall_meshes: List[trimesh.Trimesh] = []
         self._ceiling_mesh: Optional[trimesh.Trimesh] = None
-        
+
         self._collision_manager_pool: Dict[str, trimesh.collision.CollisionManager] = {}
         
-        # Statistics
         self.stats = {
             'objects_processed': 0,
             'collisions_resolved': 0,
@@ -62,107 +66,40 @@ class SceneSpatialOptimizer:
             'processing_time': 0.0,
             'early_exits': 0,
         }
-        
-    def optimize_objects(self, objects: List[SceneObject], context_objects: Optional[List[SceneObject]] = None) -> List[SceneObject]:
-        """
-        Optimize scene objects using mesh-based collision detection and support validation.
-
-        Args:
-            objects: Objects to optimize.
-            context_objects: Context objects for collision/support validation.
-
-        Returns:
-            Optimized SceneObject instances.
-        """
-        if not objects:
-            logger.debug("No objects to optimize - returning early")
-            return objects
-
-        if context_objects is None:
-            context_objects = []
-
-        start_time = time.time()
-
-        if self.config.debug_output:
-            logger.info("Starting spatial optimization for %d objects", len(objects))
-            logger.debug("Context objects: %d", len(context_objects))
-        
-        # Initialize room geometry and object meshes
-        self._initialize_room_geometry()
-        self._load_object_meshes(objects, context_objects)
-        
-        # Choose optimization approach based on configuration
-        if self.config.use_motif_level_optimization:
-            optimized_objects = self._optimize_by_motifs(objects)
-        else:
-            optimized_objects = self._optimize_individually(objects)
-
-        # Update statistics
-        self.stats['processing_time'] = time.time() - start_time
-        self._print_summary()
-        
-        if self.config.debug_output:
-            logger.info("Optimization complete - processed %d objects", len(optimized_objects))
-        
-        return optimized_objects
 
     def _initialize_room_geometry(self) -> None:
         """Initialize room geometry from the scene for mesh-based operations."""
-
         temp_scene_placer = SceneObjectPlacer(room_height=self.scene.room_height)
         
         try:
             room_geometry = temp_scene_placer.create_room_geom(self.scene.room_polygon, self.scene.door_location, self.scene.window_location)
-
-            self._floor_mesh = room_geometry['floor']
-            self._wall_meshes = [room_geometry[name] for name in room_geometry.keys() if name.startswith('wall')]
-
-            # Create ceiling mesh if room height is available
-            if hasattr(self.scene, 'room_height') and self.scene.room_height:
-                self._create_ceiling_mesh()
-                        
-            for name, mesh in room_geometry.items():
-                if name.startswith('wall'):
-                    self._wall_meshes.append(mesh)
-                elif name == 'floor':
-                    self._floor_mesh = mesh
+            floor_data = room_geometry['floor']
+            self._wall_meshes = []
+            self._floor_mesh = floor_data[0] if isinstance(floor_data, tuple) else floor_data
             
-            logger.info("Room geometry initialized for scene spatial optimization")
+            for name in room_geometry.keys():
+                if name.startswith('wall'):
+                    wall_data = room_geometry[name]
+                    wall_mesh = wall_data[0] if isinstance(wall_data, tuple) else wall_data
+                    self._wall_meshes.append(wall_mesh)
+            logger.info("Room geometry initialized")
 
         except Exception as e:
             logger.error("Failed to initialize room geometry: %s", e)
             self._room_scene = None
 
-    def _create_ceiling_mesh(self) -> None:
-        """Create ceiling mesh based on room polygon and height."""
-        try:
-            if not hasattr(self.scene, 'room_polygon') or not self.scene.room_polygon:
-                return
-
-            if self._floor_mesh is None:
-                return
-            ceiling_mesh = self._floor_mesh.copy()
-            
-            # Translate to ceiling height
-            ceiling_transform = trimesh.transformations.translation_matrix([0, self.scene.room_height, 0])
-            ceiling_mesh.apply_transform(ceiling_transform)
-            
-            # Flip normals to point downward
-            ceiling_mesh.faces = np.fliplr(ceiling_mesh.faces)
-            
-            self._ceiling_mesh = ceiling_mesh
-            logger.debug("Ceiling mesh created for collision detection")
-            
-        except Exception as e:
-            logger.error("Failed to create ceiling mesh: %s", e)
-
     def _load_object_meshes(self, objects: List[SceneObject], context_objects: Optional[List[SceneObject]] = None) -> None:
-        """Load trimesh objects for all scene objects including context objects."""
-        all_objects = objects + (context_objects or [])
-        for obj in all_objects:
+        """Load trimesh objects for current stage objects only """
+        for obj in objects:
             try:
                 if obj.name not in self._object_meshes:
-                    mesh = self._load_single_object_mesh(obj)
+                    # Try to use scene's shared mesh cache first
+                    if self._use_shared_cache and hasattr(self.scene, 'get_or_load_mesh'):
+                        mesh = self.scene.get_or_load_mesh(obj)
+                    else:
+                        # Fallback to direct loading
+                        mesh = self._load_single_object_mesh(obj)
+
                     if mesh is not None:
                         # Store working mesh
                         self._object_meshes[obj.name] = mesh.copy()
@@ -172,10 +109,28 @@ class SceneSpatialOptimizer:
             except Exception as e:
                 logger.warning("Failed to load mesh for %s: %s", obj.name, e)
 
+    def _ensure_mesh_loaded(self, obj: SceneObject) -> Optional[trimesh.Trimesh]:
+        """Ensure mesh is loaded for an object (lazy loading)."""
+        if obj.name not in self._object_meshes:
+            # Try to use scene's shared mesh cache first
+            if self._use_shared_cache and hasattr(self.scene, 'get_or_load_mesh'):
+                mesh = self.scene.get_or_load_mesh(obj)
+            else:
+                # Fallback to direct loading
+                mesh = self._load_single_object_mesh(obj)
+
+            if mesh is not None:
+                self._object_meshes[obj.name] = mesh.copy()
+                if self.config.enable_mesh_caching:
+                    self._base_object_meshes[obj.name] = mesh.copy()
+                return mesh
+            return None
+        return self._object_meshes[obj.name]
+
     def _load_single_object_mesh(self, obj: SceneObject) -> Optional[trimesh.Trimesh]:
         """Load and preprocess mesh for a single object."""
         try:
-            from hsm_core.scene.scene_3d import preprocess_object_mesh
+            from hsm_core.scene.utils.mesh_utils import preprocess_object_mesh
             # Check if mesh_path is set
             if not obj.mesh_path or obj.mesh_path.strip() == "":
                 logger.warning("Object '%s' has no mesh_path set - cannot load mesh for spatial optimization", obj.name)
@@ -204,39 +159,39 @@ class SceneSpatialOptimizer:
             logger.warning("Exception loading mesh for '%s': %s", obj.name, e)
             return None
 
-    def _optimize_by_motifs(self, objects: List[SceneObject]) -> List[SceneObject]:
-        """Optimize objects grouped by motifs, preserving internal relationships."""
-        if self.config.debug_output:
-            logger.info("Optimizing %d objects by motifs", len(objects))
+    # def _optimize_by_motifs(self, objects: List[SceneObject]) -> List[SceneObject]:
+    #     """Optimize objects grouped by motifs, preserving internal relationships."""
+    #     if self.config.debug_output:
+    #         logger.info("Optimizing %d objects by motifs", len(objects))
         
-        optimized_objects: list[SceneObject] = []
-        motif_groups = self._group_objects_by_motif(objects)
+    #     optimized_objects: list[SceneObject] = []
+    #     motif_groups = self._group_objects_by_motif(objects)
         
-        # Optimize each motif as a unit
-        for motif_id, motif_objects in motif_groups.items():
-            if self.config.debug_output:
-                logger.info("Optimizing motif: %s (%d objects)", motif_id, len(motif_objects))
+    #     # Optimize each motif as a unit
+    #     for motif_id, motif_objects in motif_groups.items():
+    #         if self.config.debug_output:
+    #             logger.info("Optimizing motif: %s (%d objects)", motif_id, len(motif_objects))
             
-            context_objects = [obj for obj in objects if obj not in motif_objects]
-            optimized_motif_objects = self._optimize_motif_as_unit(motif_objects, context_objects)
-            optimized_objects.extend(optimized_motif_objects)
+    #         context_objects = [obj for obj in objects if obj not in motif_objects]
+    #         optimized_motif_objects = self._optimize_motif_as_unit(motif_objects, context_objects)
+    #         optimized_objects.extend(optimized_motif_objects)
             
-            # ------------------------------------------------------------------
-            # Replace the original motif objects inside the *shared* `objects`
-            # list so that subsequent motif iterations use the **updated**
-            # world positions as context.  Without this, later motifs may test
-            # collisions/support against stale coordinates and apply erroneous
-            # corrections (e.g. lowering a pot that was already fixed).
-            # ------------------------------------------------------------------
-            for orig, new in zip(motif_objects, optimized_motif_objects):
-                try:
-                    idx = objects.index(orig)
-                    objects[idx] = new
-                except ValueError:
-                    # Should not happen, but fail-safe: append
-                    objects.append(new)
+    #         # ------------------------------------------------------------------
+    #         # Replace the original motif objects inside the *shared* `objects`
+    #         # list so that subsequent motif iterations use the **updated**
+    #         # world positions as context.  Without this, later motifs may test
+    #         # collisions/support against stale coordinates and apply erroneous
+    #         # corrections (e.g. lowering a pot that was already fixed).
+    #         # ------------------------------------------------------------------
+    #         for orig, new in zip(motif_objects, optimized_motif_objects):
+    #             try:
+    #                 idx = objects.index(orig)
+    #                 objects[idx] = new
+    #             except ValueError:
+    #                 # Should not happen, but fail-safe: append
+    #                 objects.append(new)
         
-        return optimized_objects
+    #     return optimized_objects
 
     def _optimize_individually(self, objects: List[SceneObject]) -> List[SceneObject]:
         """Optimize each object individually."""
@@ -246,7 +201,7 @@ class SceneSpatialOptimizer:
         optimized_objects = []
         for obj in objects:
             context_objects = [o for o in objects if o != obj]
-            optimized_obj = self._optimize_single_object(obj, context_objects)
+            optimized_obj = self._optimize_object(obj, context_objects)
             optimized_objects.append(optimized_obj)
         
         return optimized_objects
@@ -259,10 +214,12 @@ class SceneSpatialOptimizer:
         if not motif_objects:
             return []
 
+        start_time = time.time()
+
         needs_optimisation = False
         for obj in motif_objects:
             if (
-                self._find_mesh_collisions(obj, context_objects)
+                self._find_collisions(obj, context_objects)
                 or not self._is_properly_supported_mesh(obj, context_objects)
             ):
                 needs_optimisation = True
@@ -272,7 +229,7 @@ class SceneSpatialOptimizer:
             # Motif is already well-placed, preserve it
             if self.config.debug_output:
                 motif_id = motif_objects[0].motif_id if hasattr(motif_objects[0], 'motif_id') else 'unknown'
-                logger.debug("Motif %s is already well-placed", motif_id)
+                logger.info("Motif %s is already well-placed", motif_id)
             
             # Return the objects with optimized_world_pos set to their current positions
             # to maintain consistency with the optimization interface
@@ -286,52 +243,42 @@ class SceneSpatialOptimizer:
             
             return preserved_motif_objects
         
-        # Create combined mesh for the motif
+        # Create combined representative for the motif
         combined_mesh = self._create_combined_motif_mesh(motif_objects)
-        if combined_mesh is None:
-            # Fallback to individual optimization with minimal adjustments
-            return [self._optimize_single_object(obj, context_objects + [o for o in motif_objects if o != obj]) 
-                   for obj in motif_objects]
-        
-        # Create a representative object for the motif
         motif_representative = self._create_motif_representative(motif_objects, combined_mesh)
-        
-        # Cache the combined mesh so collision resolution can find it
         self._object_meshes[motif_representative.name] = combined_mesh.copy()
+        optimized_representative = self._optimize_object(motif_representative, context_objects)
         
-        # Optimize the representative object with minimal adjustments
-        optimized_representative = self._optimize_single_object(motif_representative, context_objects)
-        
-        # Calculate the transformation applied to the motif using bottom-centered positions
+        # Calculate the transformation applied to the motif
         original_bottom_center = np.array(motif_representative.position, dtype=float)
         new_bottom_center = np.array(optimized_representative.position, dtype=float)
         translation = new_bottom_center - original_bottom_center
         
-        # Apply maximum translation limit to prevent large motif movements
-        # max_translation = self.config.max_motif_translation
-        # translation_magnitude = np.linalg.norm(translation)
-        # if translation_magnitude > max_translation:
-        #     translation = translation / translation_magnitude * max_translation
-        #     if self.config.debug_output:
-        #         print(f"    Limited motif translation to {max_translation}m (was {translation_magnitude:.3f}m)")
-        
         # Apply the same transformation to all objects in the motif
         optimized_motif_objects: List[SceneObject] = []
-
         for obj in motif_objects:
-            # Work on a shallow copy so we don't accidentally mutate the caller
             optimized_obj = copy.deepcopy(obj)
             world_pos_arr = np.array(obj.position, dtype=float) + np.array(translation, dtype=float)
             world_pos = (float(world_pos_arr[0]), float(world_pos_arr[1]), float(world_pos_arr[2]))
 
-            # store position as well for small motif downstream use
             optimized_obj.position = world_pos
             optimized_obj.optimized_world_pos = world_pos
-
             optimized_motif_objects.append(optimized_obj)
 
-        if self.config.debug_output and np.linalg.norm(translation) > 0.001:
-            logger.debug("Applied minimal translation %.3fm to motif (stored in optimized_world_pos)", np.linalg.norm(translation))
+        elapsed_time = time.time() - start_time
+        logger.info("Optimized motif %s with %d objects in %.3fs", motif_objects[0].motif_id, len(optimized_motif_objects), elapsed_time)
+        
+        # Log position updates for each object
+        position_changes = 0
+        for i, (original_obj, optimized_obj) in enumerate(zip(motif_objects, optimized_motif_objects)):
+            original_pos = tuple("%.3f" % p for p in original_obj.position)
+            new_pos = tuple("%.3f" % p for p in optimized_obj.position)
+            if original_pos != new_pos:
+                logger.info("Object %d - %s: %s -> %s", i, optimized_obj.name, original_pos, new_pos)
+                position_changes += 1
+
+        if position_changes == 0:
+            logger.debug("No position changes for motif %s", motif_objects[0].motif_id)
 
         return optimized_motif_objects
 
@@ -382,7 +329,7 @@ class SceneSpatialOptimizer:
         
         return representative
 
-    def _optimize_single_object(self, obj: SceneObject, context_objects: List[SceneObject]) -> SceneObject:
+    def _optimize_object(self, obj: SceneObject, context_objects: List[SceneObject]) -> SceneObject:
         """Optimize single object with collision resolution and support validation."""
         if self.config.debug_output:
             if obj.name.startswith("motif_") or "_combined" in obj.name:
@@ -391,7 +338,7 @@ class SceneSpatialOptimizer:
                 logger.debug("Optimizing single object: %s (%s)", obj.name, obj.obj_type.name)
         
         # Step 1: Resolve collisions
-        collision_resolved_obj = self._resolve_mesh_collisions(obj, context_objects)
+        collision_resolved_obj = self._resolve_collisions(obj, context_objects)
         
         # Step 2: Ensure proper support
         support_fixed_obj = self._ensure_mesh_support(collision_resolved_obj, context_objects)
@@ -416,7 +363,7 @@ class SceneSpatialOptimizer:
         
         return support_fixed_obj
 
-    def _resolve_mesh_collisions(self, obj: SceneObject, context_objects: List[SceneObject]) -> SceneObject:
+    def _resolve_collisions(self, obj: SceneObject, context_objects: List[SceneObject]) -> SceneObject:
         """Resolve collisions using actual mesh intersection detection with minimal adjustments."""
         if self.config.debug_output:
             logger.debug("Resolving collisions for %s", obj.name)
@@ -432,7 +379,7 @@ class SceneSpatialOptimizer:
         current_obj = copy.deepcopy(obj)
         
         # First check if object actually has collisions
-        initial_collisions = self._find_mesh_collisions(current_obj, context_objects)
+        initial_collisions = self._find_collisions(current_obj, context_objects)
         
         if not initial_collisions:
             # Object is already well-placed, don't adjust
@@ -450,7 +397,7 @@ class SceneSpatialOptimizer:
         
         for iteration in range(max_iterations):
             # Check for collisions with context objects
-            colliding_objects = self._find_mesh_collisions(current_obj, context_objects)
+            colliding_objects = self._find_collisions(current_obj, context_objects)
             
             # -------------------------------------------------------------
             # Ignore shallow collisions with the *parent* object for small
@@ -503,9 +450,7 @@ class SceneSpatialOptimizer:
             
             # Move away from collisions
             current_obj = self._resolve_single_mesh_collision(current_obj, collision_list, adaptive_step_size)
-            
-            # Update mesh position efficiently using cached transforms
-            self._update_object_mesh_position_efficient(current_obj)
+            self._update_object_mesh_position(current_obj)
             
             # Track progress and reduce step size if no progress
             if current_penetration_depth >= initial_penetration_depth * self.config.step_reduction_threshold:
@@ -522,20 +467,21 @@ class SceneSpatialOptimizer:
         
         return current_obj
 
-    def _find_mesh_collisions(self, obj: SceneObject, context_objects: List[SceneObject]) -> List[SceneObject]:
+    def _find_collisions(self, obj: SceneObject, context_objects: List[SceneObject]) -> List[SceneObject]:
         """Find collisions using mesh intersection detection."""
-        if obj.name not in self._object_meshes:
+        # Ensure main object mesh is loaded
+        obj_mesh = self._ensure_mesh_loaded(obj)
+        if obj_mesh is None:
             return []
-        
-        obj_mesh = self._object_meshes[obj.name]
+
         colliding = []
-        
+
         # Get relevant collision context (type-aware)
         relevant_context = self._get_relevant_collision_context(obj, context_objects)
-        
+
         for other_obj in relevant_context:
-            if other_obj.name in self._object_meshes:
-                other_mesh = self._object_meshes[other_obj.name]
+            other_mesh = self._ensure_mesh_loaded(other_obj)
+            if other_mesh is not None:
                 
                 # Check mesh intersection
                 collision_result = self._check_mesh_collision(
@@ -639,13 +585,11 @@ class SceneSpatialOptimizer:
         # Check if moving up resolves collisions
         test_obj = copy.deepcopy(resolved_obj)
         test_obj.position = (test_obj.position[0], test_obj.position[1] + vertical_step, test_obj.position[2])
-        
-        # Update mesh position for collision test
-        self._update_object_mesh_position_efficient(test_obj)
+        self._update_object_mesh_position(test_obj)
         
         # Test if vertical movement resolves all collisions
         scene_objects_only = [c for c in colliding_objects if isinstance(c, SceneObject)]
-        remaining_collisions = self._find_mesh_collisions(test_obj, scene_objects_only)
+        remaining_collisions = self._find_collisions(test_obj, scene_objects_only)
         
         if not remaining_collisions:
             # Vertical movement resolved the collision
@@ -1075,14 +1019,6 @@ class SceneSpatialOptimizer:
         return obj
 
     def _update_object_mesh_position(self, obj: SceneObject) -> None:
-        """Update the cached mesh position to match the object's new position."""
-        if obj.name in self._object_meshes:
-            # Reload mesh with new position
-            new_mesh = self._load_single_object_mesh(obj)
-            if new_mesh is not None:
-                self._object_meshes[obj.name] = new_mesh
-
-    def _update_object_mesh_position_efficient(self, obj: SceneObject) -> None:
         """Efficiently update the cached mesh position using transformation instead of reloading."""
         if obj.name not in self._object_meshes or obj.name not in self._base_object_meshes:
             return
@@ -1255,7 +1191,7 @@ class SceneSpatialOptimizer:
         """Print optimization summary."""
         if self.config.debug_output:
             logger.info("="*60)
-            logger.info("Unified Mesh-Based Optimization Summary")
+            logger.info("Scene Spatial Optimizer Summary")
             logger.info("="*60)
             logger.info("Objects processed: %d", self.stats['objects_processed'])
             logger.info("Collisions resolved: %d", self.stats['collisions_resolved'])
@@ -1412,96 +1348,6 @@ class SceneSpatialOptimizer:
             logger.debug("Z overlap: %s (small: [%.2f, %.2f], wall: [%.2f, %.2f])", z_overlap, small_z_min, small_z_max, wall_z_min, wall_z_max)
         
         return x_overlap and z_overlap
-
-    def _resolve_single_mesh_collision_mtv(self, obj: SceneObject, colliding_objects: List[SceneObject]) -> SceneObject:
-        """Resolve collisions using the Minimum-Translation Vector.
-
-        For every colliding pair we query the contact manifold.  We
-        construct the MTV as ``normal * (depth + ε)`` where *ε* is a small
-        clearance.  If multiple contacts are present we pick the one with the
-        largest penetration depth that guarantees separation in a single
-        step while keeping displacement minimal.
-
-        The resulting MTV is then constrained according to object-type rules
-        (floor-bound, ceiling-bound, …) and applied once.
-        """
-
-        resolved_obj = copy.deepcopy(obj)
-        if not colliding_objects:
-            return resolved_obj
-
-        if obj.name not in self._object_meshes:
-            # Cannot resolve without our own mesh – keep original behaviour
-            return resolved_obj
-
-        obj_mesh = self._object_meshes[obj.name]
-
-        epsilon = 1e-4
-
-        best_mtv: Optional[np.ndarray] = None
-        best_penetration: float = 0.0
-
-        for other in colliding_objects:
-            if other.name not in self._object_meshes:
-                continue
-
-            other_mesh = self._object_meshes[other.name]
-
-            # Build a tiny collision manager for the pair to get contact data
-            cm = trimesh.collision.CollisionManager()
-            cm.add_object("obj", obj_mesh)
-            cm.add_object("other", other_mesh)
-            result = cm.in_collision_internal(return_data=True)
-            # Trimesh may return a tuple of (bool, contacts) or (bool, set, list)
-            in_collision = False
-            contacts = None
-            if isinstance(result, tuple):
-                if len(result) >= 1:
-                    in_collision = bool(result[0])
-                if len(result) >= 2:
-                    contacts = result[1]
-            else:
-                in_collision = bool(result)
-                contacts = None
-            if not in_collision or not contacts:
-                continue
-
-            # Choose deepest contact among the list returned
-            deepest_contact = max(contacts, key=lambda c: float(c.depth))
-            penetration: float = float(deepest_contact.depth)
-            normal_vec = np.array(deepest_contact.normal, dtype=float)
-
-            # Ensure the normal points *away* from the other object – if the dot
-            # product between the normal and centre-to-centre vector is
-            # negative we flip the normal.
-            center_delta = np.array(obj.position) - np.array(other.position)
-            if np.dot(normal_vec, center_delta) < 0:
-                normal_vec = -normal_vec
-
-            mtv = normal_vec * (penetration + epsilon)
-
-            if penetration > best_penetration:
-                best_penetration = penetration
-                best_mtv = mtv
-
-        if best_mtv is None:
-            # Could not compute an MTV (e.g. no contact normals) – fallback
-            return resolved_obj
-
-        mtv_len: float = float(np.linalg.norm(best_mtv))
-        if mtv_len < 1e-9:
-            return resolved_obj
-
-        # Constrain movement along allowed axes based on object type
-        direction_unit = best_mtv / mtv_len
-        constrained_dir = self._apply_movement_constraints(direction_unit, resolved_obj.obj_type)
-        best_mtv = constrained_dir * mtv_len
-
-        # Apply translation
-        new_position = np.array(resolved_obj.position, dtype=float) + np.array(best_mtv, dtype=float)
-        resolved_obj.position = (float(new_position[0]), float(new_position[1]), float(new_position[2]))
-
-        return resolved_obj
 
     def _fix_wall_object_support(self, small_obj: SceneObject, wall_obj: SceneObject) -> SceneObject:
         """Fix positioning of a small object to sit properly on a wall object surface."""

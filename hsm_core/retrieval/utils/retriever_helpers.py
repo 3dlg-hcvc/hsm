@@ -6,14 +6,14 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 import trimesh
-import logging
 from pathlib import Path
 from copy import deepcopy
+from hsm_core.utils import get_logger
 
 from hsm_core.scene_motif.core.obj import Obj
 from hsm_core.retrieval.utils.transform_tracker import TransformTracker, TransformInfo
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.utils.retriever_helpers')
 
 
 def _ensure_transform_tracker(obj: Obj) -> TransformTracker:
@@ -229,10 +229,10 @@ def optimize_mesh_rotation(
             if score < best_score:
                 best_score = score
                 best_mesh = current_mesh
-                best_rotation_info = {
-                    "side_rotation": f"{np.degrees(side_angle):.0f}° around {side_axis}",
-                    "y_rotation": f"{y_rotation_step * 90}°",
-                }
+                best_rotation_info = {}
+                if side_angle != 0:
+                    best_rotation_info["side_rotation"] = f"{np.degrees(side_angle):.0f}° around {side_axis}"
+                best_rotation_info["y_rotation"] = f"{y_rotation_step * 90}°"
                 best_is_penalized = current_is_penalized
     
     if best_mesh is None:
@@ -240,7 +240,6 @@ def optimize_mesh_rotation(
         mesh_extents_original = mesh.extents
         best_score = _calculate_bbox_score(target_dimensions, mesh_extents_original)
         best_rotation_info = {
-            "side_rotation": "0° around [1 0 0]",
             "y_rotation": "0°",
             "optimization_skipped_no_better_found": True
         }

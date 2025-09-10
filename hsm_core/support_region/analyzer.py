@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
@@ -8,6 +7,7 @@ import trimesh
 from typing import Dict, Any, List, Tuple, Optional
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
+from hsm_core.utils import get_logger
 
 from .constants import (
     NORMAL_HORIZONTAL_THRESHOLD, AREA_THRESHOLD, SIZE_THRESHOLD, MERGE_DISTANCE,
@@ -19,7 +19,7 @@ from .geometry import calculate_surface_segments, merge_touching_geometries
 
 from .utils import build_surface_data_entry, round_nested_dict, simplify_vertices_outer
 
-logger = logging.getLogger(__name__)
+logger = get_logger('support_region.analyzer')
 
 def _get_valid_heights(parsed_data):
     exact_heights = set()

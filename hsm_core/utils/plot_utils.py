@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import io
 from PIL import Image
+from hsm_core.utils import get_logger
 
 def get_scene_transforms(scene):
     """Get transforms for all objects in scene."""
@@ -18,7 +19,8 @@ def get_scene_transforms(scene):
                                     scene.graph.transforms.edge_data[(path[i], path[i + 1])])
                 transforms[name] = transform
             except (ValueError, KeyError):
-                print(f"Warning: Could not get transform for {name}, using identity matrix")
+                logger = get_logger('hsm_core.utils.plot_utils')
+                logger.warning(f"Could not get transform for {name}, using identity matrix")
                 transforms[name] = np.eye(4)
     return transforms
 

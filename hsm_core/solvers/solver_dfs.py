@@ -1,5 +1,5 @@
 import os
-import sys
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Set, Union
 from dataclasses import dataclass
@@ -13,13 +13,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon, Point, LineString
 from rtree import index
-
-# Project imports
-project_root = Path(__file__).parent.parent
-sys.path.append(str(project_root))
 from hsm_core.vlm.utils import round_nested_values
+from hsm_core.utils import get_logger
 
-# Set random seed for reproducibility
+logger = get_logger('solvers.dfs')
+
 random.seed(42)
 np.random.seed(42)
 
@@ -109,22 +107,16 @@ class DFSSolver:
         self.motifs = motifs
         self.constraints = {motif[0]: motif[2] for motif in motifs if motif[2]}
         
-        print(f"\n=== Starting DFS Solver ===")
-        print(f"Support Region: {surface_poly} with area: {surface_poly.area:.2f}")
-        print(f"motifs to place: {[o[0] for o in motifs]}")
-        print(motifs)
-        print(f"Grid size: {self.config.grid_size}m")
+        logger.info("=== Starting DFS Solver ===")
+        logger.debug(f"Support Region: {surface_poly} with area: {surface_poly.area:.2f}")
+        # logger.info(f"{len(motifs)} motifs to solve: {[o[0] for o in motifs]}")
+        logger.debug(f"Grid size: {self.config.grid_size}m")
         
-        # Process initial placements
         self._process_initial_placements(initial_placed or {})
-        
-        # Initialize spatial index
         self.spatial_index = index.Index()
         
         # Separate fixed obstacles from movable motifs
         fixed_motifs, movable_motifs = self._separate_motifs()
-        
-        # Add obstacles to spatial index
         self._add_obstacles_to_index(fixed_motifs)
         
         # Sort motifs by area (largest first) for better search efficiency
@@ -134,14 +126,13 @@ class DFSSolver:
             reverse=True
         )
         
-        # Start DFS search
         self.start_time = time.time()
         self._dfs_search(sorted_motifs, {}, 0, verbose)
         
         elapsed = time.time() - self.start_time
-        print(f"\n=== Solver Finished ===")
-        print(f"Solutions found: {len(self.solutions)}")
-        print(f"Time elapsed: {elapsed:.2f}s")
+        logger.info("=== DFS Solver Finished ===")
+        logger.info(f"Solutions found: {len(self.solutions)}")
+        logger.info(f"Time elapsed: {elapsed:.2f}s")
         
         return self.solutions
     
@@ -219,16 +210,16 @@ class DFSSolver:
         # Check timeout
         if time.time() - self.start_time > self.config.max_duration:
             if verbose:
-                print(f"Timeout at depth {depth}")
+                logger.info(f"Timeout at depth {depth}")
             # Save partial solution if it's the best we have
             if depth > 0 and not self.solutions:
                 self.solutions.append(dict(current_placement))
             return
-        
+
         # Base case: all motifs placed
         if not remaining_motifs:
             if verbose:
-                print(f"Found complete solution at depth {depth}")
+                logger.info(f"Found complete solution at depth {depth}")
             self.solutions.append(dict(current_placement))
             return
         
@@ -237,7 +228,7 @@ class DFSSolver:
         motif_name, motif_dims, motif_constraints = current_motif
         
         if verbose:
-            print(f"Search depth {depth}: Placing {motif_name}, motif_dims: {motif_dims}, motif_constraints: {motif_constraints}")
+            logger.debug(f"Search depth {depth}: Placing {motif_name}, motif_dims: {motif_dims}, motif_constraints: {motif_constraints}")
         
         # Generate and evaluate candidates using this motif's specific dimensions
         candidates = self._generate_candidates(motif_name, motif_dims, current_placement)
@@ -247,7 +238,7 @@ class DFSSolver:
         
         if not valid_candidates:
             if verbose:
-                print(f"No valid positions for {motif_name}, trying next motif.")
+                logger.debug(f"No valid positions for {motif_name}, trying next motif")
             # skip current motif and recurse on the rest.
             self._dfs_search(remaining_motifs[1:], current_placement, depth, verbose)
             return
@@ -260,7 +251,7 @@ class DFSSolver:
         for i, (placement, score) in enumerate(valid_candidates[:self.config.max_candidates_per_motif]):
             candidates_tried += 1
             if verbose:
-                print(f"  Trying candidate {i+1}/{max_candidates} (score: {score:.3f})")
+                logger.debug(f"  Trying candidate {i+1}/{max_candidates} (score: {score:.3f})")
             
             # Place motif
             current_placement[motif_name] = placement
@@ -276,7 +267,7 @@ class DFSSolver:
             # Early termination if we found a solution
             if self.solutions:
                 if verbose:
-                    print(f"  Solution found after trying {candidates_tried}/{max_candidates} candidates for {motif_name}")
+                    logger.debug(f"  Solution found after trying {candidates_tried}/{max_candidates} candidates for {motif_name}")
                 return
     
     def _generate_candidates(
@@ -397,7 +388,7 @@ class DFSSolver:
         valid_candidates.sort(key=lambda x: x[1], reverse=True)
         
         if verbose and valid_candidates:
-            print(f"    Top candidate scores: {[f'{s:.3f}' for _, s in valid_candidates[:3]]}")
+            logger.debug(f"    Top candidate scores: {[f'{s:.3f}' for _, s in valid_candidates[:3]]}")
         
         return valid_candidates
     
@@ -433,16 +424,14 @@ class DFSSolver:
         
         try:
             motif_poly = Polygon(placement.bbox)
-            
-            # Clean geometries to avoid topology issues
             surface_clean = self._clean_polygon(self.surface_poly)
             motif_clean = self._clean_polygon(motif_poly)
             
-            # Strict containment check first
+            # Containment check first
             if surface_clean.contains(motif_clean):
                 return True
             
-            # Tolerance check for numerical precision
+            # Tolerance check
             if not surface_clean.intersects(motif_clean):
                 return False
             
@@ -880,7 +869,6 @@ class DFSSolver:
             depth = motif_data[1][2] if motif_data else 0.0
             
             original_name = self.original_names.get(motif_name, motif_name)
-            # print(initial_placements)
             formatted_motif = {
                 "id": original_name,
                 "position": [center_x, center_z],
@@ -924,7 +912,7 @@ class DFSSolver:
                 poly = Polygon(bbox)
                 total_area += poly.area
             except Exception as e:
-                print(f"Error calculating area for {key}: {e}")
+                logger.error(f"Error calculating area for {key}: {e}")
                 continue
         
         surface_area = self.surface_poly.area
@@ -945,6 +933,53 @@ class DFSSolver:
             surface_x, surface_y = self.surface_poly.exterior.xy
             ax.plot(surface_x, surface_y, "k-", linewidth=2, label="Surface")
         
+        # Draw fixed obstacles from initial placements
+        for motif_name, placement in initial_placements.items():
+            if motif_name == "door_clearance":
+                continue
+
+            # Check if this motif is actually an obstacle (has is_fixed constraint)
+            is_obstacle = False
+            for motif in self.motifs:
+                if motif[0] == motif_name:  # motif[0] is the motif name
+                    for constraint in motif[2]:  # motif[2] contains constraints
+                        if constraint.get("constraint") == "is_fixed" or constraint.get("is_fixed"):
+                            is_obstacle = True
+                            break
+                    break
+
+            if not is_obstacle:
+                continue
+
+            try:
+                # Handle different placement formats for initial placements
+                if isinstance(placement, MotifPlacement):
+                    center = (placement.center_x, placement.center_y)
+                    bbox = placement.bbox
+                    rotation = placement.rotation
+                elif isinstance(placement, (list, tuple)):
+                    if len(placement) >= 3:
+                        center = placement[0]
+                        rotation = placement[1]
+                        bbox = placement[2]
+                    else:
+                        continue
+                else:
+                    continue
+
+                # Draw fixed obstacle polygon
+                poly = Polygon(bbox)
+                x, y = poly.exterior.xy
+                ax.fill(x, y, alpha=0.3, color='gray', edgecolor="black", linewidth=1, label=f"{motif_name} (fixed)")
+
+                # Add label
+                center_x, center_y = float(center[0]), float(center[1])
+                ax.text(center_x, center_y, f"{motif_name}\n(fixed)", fontsize=8, ha="center", va="center")
+
+            except Exception as e:
+                logger.error(f"Error drawing fixed obstacle {motif_name}: {e}")
+                continue
+
         # Draw solution motifs
         for motif_name, placement in solution.items():
             if motif_name == "door_clearance":
@@ -1000,7 +1035,7 @@ class DFSSolver:
                 ax.text(center_x, center_y, motif_name, fontsize=8, ha="center", va="center")
                 
             except Exception as e:
-                print(f"Error drawing motif {motif_name}: {e}")
+                logger.error(f"Error drawing motif {motif_name}: {e}")
                 continue
         
         ax.set_title("DFS Solver Solution")
@@ -1009,7 +1044,7 @@ class DFSSolver:
         if output_path:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             plt.savefig(output_path, bbox_inches="tight", dpi=300)
-            print(f"Solution saved to {output_path}")
+            logger.info(f"Solution saved to {output_path}")
         
         plt.close()
 
@@ -1098,6 +1133,8 @@ def run_solver(
     Returns:
         Tuple of (placed_motifs, occupancy_ratio)
     """
+    start_timer = time.time()
+    
     # Separate motifs by collision handling
     motifs_to_solve = []
     ignore_collision_motifs = []
@@ -1111,14 +1148,12 @@ def run_solver(
     if enable:
         config = DFSSolverConfig(grid_size=grid_size)
         solver = DFSSolver(config)
-        
-        if verbose:
-            # print(f"motifs to solve: {len(motifs_to_solve)}")
-            print(f"motifs to solve: {len(motifs_to_solve)}: {round_nested_values(surface_motifs)}")
-            print(f"motifs with ignore_collision: {len(ignore_collision_motifs)}")
-        
+
+        logger.info(f" {len(motifs_to_solve)} motifs to solve: {round_nested_values(surface_motifs)}")
+        logger.debug(f" {len(ignore_collision_motifs)} motifs with ignore_collision")
+
         if not motifs_to_solve and not ignore_collision_motifs:
-            print("No motifs to solve")
+            logger.info("No motifs to solve")
             return [], 0.0
         
         # Process solvable motifs
@@ -1126,7 +1161,6 @@ def run_solver(
         if motifs_to_solve:
             motifs_list, constraints, initial_placements = solver.format_input(motifs_to_solve, expand_extent)
             raw_solutions = solver.solve(surface_geometry, motifs_list, initial_placements, verbose)
-            print(f"solver raw solutions: {raw_solutions}")
         else:
             # No regular motifs to solve, create empty solution
             initial_placements = {}
@@ -1142,17 +1176,15 @@ def run_solver(
         if raw_solutions:
             best_raw_solution = raw_solutions[0]
             occupancy = solver.calculate_occupancy(best_raw_solution)
-            print(f"Occupancy: {occupancy:.2%}")
-            
+            logger.info(f"Occupancy: {occupancy:.2%}")
+
             # Visualize solution
             output_path = os.path.join(output_dir, f"solution_{subfix}.png") if output_dir else None
             solver.visualize_solution(best_raw_solution, initial_placements, output_path=output_path)
-    
+
     else:
-        # Ablation mode: use initial positions
-        if verbose:
-            print("Ablation: skipping DFS solver...")
-        
+        # Ablation: directly use positions from VLM
+        logger.info("Ablation: skipping DFS solver")
         placed_motifs = []
         for motif in surface_motifs:
             if motif.get("is_fixed") is True:
@@ -1172,7 +1204,9 @@ def run_solver(
             })
         
         occupancy = 0.0
-    
-    print(f"placed_motifs: {round_nested_values(placed_motifs)}")
+
+    elapsed = time.time() - start_timer
+    logger.debug(f"{len(placed_motifs)} Placed motifs: {round_nested_values(placed_motifs)}")
+    logger.info("="*27)
     
     return placed_motifs, occupancy

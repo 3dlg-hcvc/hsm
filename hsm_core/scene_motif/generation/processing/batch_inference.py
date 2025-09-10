@@ -3,23 +3,18 @@ Batch inference for scene motifs
 """
 
 import asyncio
-import logging
 import shutil
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
+from hsm_core.utils import get_logger
 
-from ..decomposition import decompose_motif_async
-from .motif_processing import (
-    process_single_object_motifs,
-    process_motif_with_visual_validation
-)
 from ...utils.utils import log_time
-from hsm_core.retrieval.model.model_manager import ModelManager
-from hsm_core.retrieval.core.adaptive_retrieval import retrieve_adaptive
 from hsm_core.scene.core.objecttype import ObjectType
 from hsm_core.scene.specifications.object_spec import ObjectSpec
 from hsm_core.config import HSSD_PATH, PROJECT_ROOT
+
+logger = get_logger('scene_motif.generation.processing.batch_inference')
 
 class SceneMotif:
     """Minimal SceneMotif implementation for testing"""
@@ -36,8 +31,6 @@ class SceneMotif:
     def __repr__(self):
         return f"SceneMotif(id='{self.id}', description='{self.description}')"
 
-logger = logging.getLogger(__name__)
-
 
 async def batch_inference(
     scene_motif_specs: List["SceneMotif"],
@@ -51,7 +44,7 @@ async def batch_inference(
     log_to_terminal: bool = False,
     support_surface_constraints: Optional[Dict[str, Dict]] = None,
     skip_visual_validation: bool = False,
-    make_tight_override: bool = False
+    force_make_tight: bool = False
 ) -> List["SceneMotif"]:
     """Process multiple scene motifs in batch"""
     total_start = time.time()
@@ -59,8 +52,10 @@ async def batch_inference(
 
     if model is None:
         logger.info("Initializing CLIP model...")
+        from hsm_core.retrieval.model.model_manager import ModelManager
         model = await ModelManager.get_clip_model_async()
 
+    from .motif_processing import process_single_object_motifs
     multi_object_motifs, processed_motifs, furniture_mapping, all_furniture_specs = await process_single_object_motifs(
         scene_motif_specs, output_dir, model, save_prefix, mesh_overrides,
         object_type, log_to_terminal, support_surface_constraints
@@ -87,6 +82,7 @@ async def batch_inference(
     # Create semaphore to limit concurrent VLM calls
     semaphore = asyncio.Semaphore(5)
 
+    from ..decomposition import decompose_motif_async
     async def first_decompose_with_semaphore(motif):
         async with semaphore:
             return await decompose_motif_async(motif, max_attempts=1)
@@ -97,6 +93,7 @@ async def batch_inference(
     )
 
     if all_furniture_specs:
+        from hsm_core.retrieval.core.adaptive_retrieval import retrieve_adaptive
         retrieval_task = asyncio.create_task(retrieve_adaptive(
             objs=all_furniture_specs, same_per_label=True, avoid_used=False, randomize=False,
             use_top_k=5, model=model, object_type=object_type,
@@ -117,9 +114,10 @@ async def batch_inference(
     async def process_with_semaphore(motif_data):
         async with semaphore:
             motif, first_decompose_result = motif_data
+            from .motif_processing import process_motif_with_visual_validation
             return await process_motif_with_visual_validation(
                 motif, furniture_mapping, output_dir, save_prefix, optimize,
-                make_tight_override, skip_visual_validation, log_to_terminal, support_surface_constraints,
+                force_make_tight, skip_visual_validation, log_to_terminal, support_surface_constraints,
                 first_decompose_result=first_decompose_result, max_attempts=3,
             )
 
@@ -145,14 +143,13 @@ async def batch_inference(
         elif result is not None and hasattr(result, 'id') and hasattr(result, 'object_specs'):
             processed_motifs.append(result)
 
-    logger.info("\n" + "="*50)
+    logger.info("="*50)
     logger.info("Batch inference complete!")
-    log_time(total_start, f"Total batch inference time for {len(scene_motif_specs)} arrangements")
-    logger.info(f"Successfully processed {len(processed_motifs)} out of {len(scene_motif_specs)} motifs")
+    log_time(total_start, f"Total batch inference time for {len(scene_motif_specs)} scene motifs")
     logger.info("="*50)
     return processed_motifs 
 
-if __name__ == "__main__":
+def main():
     large_test_data = [
         {
             'id': 'sofa_tables_01', 'area_name': 'Sofa Area',
@@ -193,26 +190,26 @@ if __name__ == "__main__":
         }
     ]
     small_test_data = [
-    {
-            'id': 'stack_of_books_01', 'area_name': 'stack of books',
-            'composition': {
-                'description': 'a stack of 4 books',
-                'furniture': [
-                    ObjectSpec(id=1, name='book', description='a book', dimensions=[0.3, 0.05, 0.2], amount=4)
-                ],
-                'total_footprint': [0.2, 0., 0.05], 'clearance': 0.5
-            },
-            'rationale': 'Creates a stack of 4 books'
-        },
+    # {
+        #     'id': 'stack_of_books_01', 'area_name': 'stack of books',
+        #     'composition': {
+        #         'description': 'a stack of 4 books',
+        #         'furniture': [
+        #             ObjectSpec(id=1, name='book', description='a book', dimensions=[0.3, 0.05, 0.2], amount=4)
+        #         ],
+        #         'total_footprint': [0.2, 0., 0.05], 'clearance': 0.5
+        #     },
+        #     'rationale': 'Creates a stack of 4 books'
+        # },
         {
         'id': 'place_setting_01',
         'area_name': 'Place Setting',
         'composition': {
-            'description': 'a place setting, a plate with a knife and a fork on each side and a cup in front',
+            'description': 'a place setting, a plate with a knife and a fork on each side, in front of a cup',
             'furniture': [
                 ObjectSpec(id=1, name='plate', description='a plate', dimensions=[0.27, 0.025, 0.27], amount=1), 
-                ObjectSpec(id=2, name='knife', description='a knife', dimensions=[0.23, 0.005, 0.02], amount=1), 
-                ObjectSpec(id=3, name='fork', description='a fork', dimensions=[0.20, 0.005, 0.02], amount=1),   
+                ObjectSpec(id=2, name='knife', description='a knife', dimensions=[0.02, 0.005, 0.23], amount=1), 
+                ObjectSpec(id=3, name='fork', description='a fork', dimensions=[0.02, 0.005, 0.20], amount=1),   
                 ObjectSpec(id=4, name='cup', description='a cup', dimensions=[0.08, 0.1, 0.08], amount=1),       
             ],
             'total_footprint': [0.45, 0.3, 0.3], 
@@ -220,8 +217,12 @@ if __name__ == "__main__":
             }
         }
     ]
-    skip_visual_validation = False
-    make_tight_override = False
+    skip_visual_validation = True
+    force_make_tight = False
+    
+    # force logging level to INFO
+    import logging
+    logging.basicConfig(level=logging.INFO)
     
     test_large_motifs = [
         SceneMotif(
@@ -239,19 +240,21 @@ if __name__ == "__main__":
         ) for item in small_test_data
     ]
     
-    # Use config value for debug directory if available, otherwise use default
     debug_dir = "results_debug/scene_motif"
     output_dir = PROJECT_ROOT / Path(debug_dir)
     if output_dir.exists():
         shutil.rmtree(output_dir)
     
-    def test(motifs, object_type):
+    def test_motif_generation(motifs, object_type):
         logger.info(f"Testing concurrent processing with {len(motifs)} motifs:")
         for motif in motifs:
             logger.info(f"  - {motif.id}: {motif.description}")
         logger.info("")
         
-        asyncio.run(batch_inference(motifs, output_dir, "living_room", object_type=object_type, skip_visual_validation=skip_visual_validation, make_tight_override=make_tight_override)) 
+        asyncio.run(batch_inference(motifs, output_dir, "living_room", object_type=object_type, skip_visual_validation=skip_visual_validation, force_make_tight=force_make_tight)) 
     
-    test(test_large_motifs, ObjectType.LARGE)
-    test(test_small_motifs, ObjectType.SMALL)
+    # test_motif_generation(test_large_motifs, ObjectType.LARGE)
+    test_motif_generation(test_small_motifs, ObjectType.SMALL)
+
+if __name__ == "__main__":
+    main()

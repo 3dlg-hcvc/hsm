@@ -8,14 +8,15 @@ import logging
 import traceback
 import yaml
 from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+from hsm_core.utils import get_logger
 
 import hsm_core.vlm.gpt as gpt
 from hsm_core.config import PROMPT_DIR
 
 if TYPE_CHECKING:
-    from hsm_core.scene.motif import SceneMotif
+    from hsm_core.scene.core.motif import SceneMotif
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.generation.decomposition')
 
 
 async def decompose_motif_async(
@@ -48,7 +49,7 @@ async def decompose_motif_async(
                 prompt_info={"MOTIF_DEFINITIONS": yaml.safe_load(open(PROMPT_DIR / "motif_definitions.yaml"))["motifs"]}
             )
 
-        log = custom_logger if custom_logger is not None else logging.getLogger(__name__)
+        log = custom_logger if custom_logger is not None else logger
 
         furniture_count = {spec.name: spec.amount for spec in motif.object_specs}
 
@@ -102,7 +103,7 @@ async def decompose_motif_async(
                 arrangement_json_task = asyncio.create_task(send_llm_with_validation_async(
                     decompose_session, "generate_compositional_json",
                     {"description": motif.description, "primary_arrangement": primary_arrangement, "secondary_arrangements": secondary_arrangements},
-                    validate_compositional_json, json=True
+                    validate_compositional_json, is_json=True
                 ))
                 arrangement_json = await arrangement_json_task
             else:
@@ -111,7 +112,7 @@ async def decompose_motif_async(
                 secondary_arrangements = await send_llm_with_validation_async(
                     decompose_session, "identify_remaining_arrangements",
                     {"description": motif.description, "primary_arrangement": primary_arrangement, "remaining_objects": str(remaining_objects)},
-                    lambda r: validate_remaining_arrangements(r, remaining_objects), json=True
+                    lambda r: validate_remaining_arrangements(r, remaining_objects), is_json=True
                 )
 
                 if custom_logger:
@@ -119,7 +120,7 @@ async def decompose_motif_async(
                 arrangement_json = await send_llm_with_validation_async(
                     decompose_session, "generate_compositional_json",
                     {"description": motif.description, "primary_arrangement": primary_arrangement, "secondary_arrangements": secondary_arrangements},
-                    validate_compositional_json, json=True
+                    validate_compositional_json, is_json=True
                 )
             
             # Step 3: Validation
@@ -128,7 +129,7 @@ async def decompose_motif_async(
 
             validate_response = json.loads(await send_llm_async(
                 decompose_session, "validate_arrangement",
-                {"arrangement_json": arrangement_json}, json=True
+                {"arrangement_json": arrangement_json}, is_json=True
             ))
 
             if custom_logger:
@@ -149,7 +150,7 @@ async def decompose_motif_async(
                 feedback_message = f"Decomposition validation failed - ATTEMPT {attempt + 1}: {' | '.join(feedback)}."
                 decompose_session.add_feedback(feedback_message)
                 if custom_logger:
-                    log.warning(f"Added validation feedback to session: {feedback_message}")
+                    log.debug(f"Added validation feedback to session: {feedback_message}")
                 continue
             
             if custom_logger:
@@ -157,17 +158,16 @@ async def decompose_motif_async(
             return arrangement_json, validate_response
 
         if custom_logger:
-            log.error(f"All {max_attempts} decomposition attempts failed for motif {motif.id}")
+            log.info(f"All {max_attempts} decomposition attempts failed for motif {motif.id}")
         return None, None
 
     except Exception as e:
         if custom_logger:
-            log.error(f"Exception in decomposition for motif {motif.id}: {str(e)}")
-            log.error(f"Traceback: {traceback.format_exc()}")
+            log.info(f"Exception in decomposition for motif {motif.id}: {str(e)}")
+            log.info(f"Traceback: {traceback.format_exc()}")
         else:
-            module_logger = logging.getLogger(__name__)
-            module_logger.error(f"Error decomposing motif {motif.id}: {str(e)}")
-            module_logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.info(f"Error decomposing motif {motif.id}: {str(e)}")
+            logger.info(f"Traceback: {traceback.format_exc()}")
         return None, None
 
 

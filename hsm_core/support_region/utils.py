@@ -1,4 +1,3 @@
-import logging
 from collections import Counter, defaultdict
 import numpy as np
 from shapely import MultiPolygon, Polygon
@@ -6,10 +5,11 @@ import trimesh
 from pathlib import Path as PathLib
 from trimesh.caching import TrackedArray
 import time
+from hsm_core.utils import get_logger
 
 from .constants import VERTEX_MERGE_THRESHOLD
 
-logger = logging.getLogger(__name__)
+logger = get_logger('support_region.utils')
 
 def build_surface_data_entry(info_item, geom_item, surface_id_val, color_val, height_val,
                              layer_bounds_for_relative_center_val,

@@ -1,8 +1,8 @@
 import asyncio
-import logging
 from typing import Callable, Any
+from hsm_core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.utils.llm_async_utils')
 
 
 async def send_llm_async(session, task: str, prompt_info: dict, **kwargs) -> str:

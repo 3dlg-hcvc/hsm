@@ -2,13 +2,14 @@
 This module provides shared functions for assigning meshes to objects
 """
 
-import logging
 from copy import copy
+import logging
 from typing import Dict, List
+from hsm_core.utils import get_logger
 
 from ..core.obj import Obj
 
-logger = logging.getLogger(__name__)
+logger = get_logger('scene_motif.utils.mesh_utils')
 
 
 def create_furniture_lookup(furniture_specs, retrieved_furniture: List[Obj]) -> Dict[str, Obj]:

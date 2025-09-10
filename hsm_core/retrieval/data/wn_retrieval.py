@@ -5,14 +5,14 @@ This module handles WordNet synset key retrieval and mapping for object descript
 """
 
 import json
-import logging
 from typing import List, Optional, Dict, Tuple
+from hsm_core.utils import get_logger
 
 import hsm_core.vlm.gpt as gpt
 from hsm_core.config import PROMPT_DIR
 from .data_utils import filter_hssd_categories, _load_hssd_alignment_data
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.data.wn_retrieval')
 
 
 def _get_wnsynsetkeys_for_labels(
@@ -84,7 +84,7 @@ def _get_wnsynsetkeys_for_labels(
     wnsynsetkeys_response = wnsynsetkeys_session.send_with_validation(
         "wnsynsetkeys",
         {"wnsynsetkeys": ",".join(all_wnsynsetkeys_list), "object_labels": ",".join(labels)},
-        validation_wrapper, json=True
+        validation_wrapper, is_json=True
     )
     wnsynsetkeys_response_json: Dict[str, List[str]] = json.loads(gpt.extract_json(wnsynsetkeys_response))
     final_wnsynsetkeys = wnsynsetkeys_response_json.get("wnsynsetkeys", [])

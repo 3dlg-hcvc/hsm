@@ -1,15 +1,15 @@
-import logging
 import numpy as np
 import trimesh
 from matplotlib import pyplot as plt
 import matplotlib.collections
 from typing import List, Tuple, Optional, Dict, Any
+from hsm_core.utils import get_logger
 
 from hsm_core.support_region.constants import MIN_AREA, MIN_DIMENSION, MAX_FACES_PER_BATCH
 from hsm_core.support_region.utils import shrink_bounds
 from hsm_core.support_region.geometry import segment_geometry
 
-logger = logging.getLogger(__name__)
+logger = get_logger('visualization.geometry_2d_visualizer')
 
 def visualize_object_geometry(
     geometries: List[trimesh.Trimesh],
@@ -133,7 +133,7 @@ def visualize_object_geometry(
                      if verbose: logger.debug("Skipping degenerate triangle")
                      continue
 
-                patch_collection.append(plt.Polygon(triangle, alpha=alpha, color=color, fill=fill,
+                patch_collection.append(plt.Polygon(triangle, alpha=alpha, facecolor=color if fill else 'none',
                                                     edgecolor='black' if show_border else 'none',
                                                     linewidth=1.0 if show_border else 0))
                 total_faces += 1
@@ -143,7 +143,7 @@ def visualize_object_geometry(
                         logger.debug(f"Adding batch of {len(patch_collection)} polygons")
                     try:
                         collection = matplotlib.collections.PatchCollection(patch_collection, match_original=False)
-                        collection.set_facecolor(color)
+                        collection.set_facecolor(color if fill else 'none')
                         collection.set_alpha(alpha)
                         if show_border:
                             collection.set_edgecolor('black')

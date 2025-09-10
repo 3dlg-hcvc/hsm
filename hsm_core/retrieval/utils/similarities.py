@@ -5,14 +5,14 @@ This module provides unified similarity computation functionality for both local
 retrieval systems, eliminating code duplication across the retrieval module.
 """
 
-import logging
 from typing import List, Tuple, Optional, Any
 import torch
 import numpy as np
+from hsm_core.utils import get_logger
 
 from ..model.embeddings import load_hssd_embeddings_and_index
 
-logger = logging.getLogger(__name__)
+logger = get_logger('retrieval.utils.similarities')
 
 
 def filter_hssd_embeddings(
@@ -45,7 +45,7 @@ def filter_hssd_embeddings(
 
     if not valid_ids:
         if verbose:
-            logger.warning(f"None of the {len(valid_ids_set)} requested meshes found in HSSD embeddings")
+            logger.info(f"None of the {len(valid_ids_set)} requested meshes found in HSSD embeddings")
         # Return empty tensor with correct shape
         return torch.zeros((0, hssd_embeddings.shape[1]), device=hssd_embeddings.device, dtype=hssd_embeddings.dtype), []
 
@@ -88,7 +88,7 @@ def compute_text_embeddings(
 
     tokenized_texts = tokenizer(texts).to(device)
 
-    with torch.no_grad(), torch.cuda.amp.autocast():
+    with torch.no_grad(), torch.amp.autocast(device_type='cuda'):
         text_embeddings = model.encode_text(tokenized_texts)
         text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
 
