@@ -28,7 +28,6 @@ The repo is tested on Ubuntu 22.04 LTS with `Python 3.11` and `CUDA 12.1`.
    You need to add:
    - [Your OpenAI API key](https://platform.openai.com/api-keys)
    - [Your Hugging Face access token](https://huggingface.co/settings/tokens)
-   - (Optional) [Hugging Face SSH key](https://huggingface.co/settings/keys) for faster download
 
 3. **Run the automated setup script:**
    ```bash
