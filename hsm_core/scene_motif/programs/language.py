@@ -16,7 +16,6 @@ def create(label: str|Obj|Arrangement,
     Returns:
         obj: Obj, the object
     '''
-    # deepcopy the label to avoid issues with the same object being used in multiple places
     if not isinstance(label, str):
         return deepcopy(label)
     else:
@@ -71,7 +70,7 @@ def rotate(obj: Obj|Arrangement, axis: str, angle: float) -> None:
             case "z":
                 axis_of_rotation = obj.bounding_box.coord_axes[:, 2]
             case _:
-                raise ValueError("Invalid axis")
+                raise ValueError(f"Invalid axis '{axis}'. Valid axes are: 'x', 'y', 'z'")
         
         angle = np.radians(angle)
         kx, ky, kz = axis_of_rotation

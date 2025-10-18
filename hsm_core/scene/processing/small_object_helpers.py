@@ -159,8 +159,8 @@ def collect_surface_data(
             )
                 
         except (FileNotFoundError, Exception) as e:
-            logger.error(f"Error: failed to get support surface data for {large_object_name}")
-            logger.error(traceback.format_exc())
+            logger.info(f"Failed to get support surface data for {large_object_name}")
+            logger.debug(traceback.format_exc())
                 
         # Store layer data for this object
         if obj_layer_data is not None:
@@ -180,9 +180,8 @@ def collect_surface_data(
             logger.info(f"No layer data found for {large_object_name} during collect_surface_data")
             # continue with other objects
 
-    # After the loop through large_object_names
     if not valid_objects:
-        logger.warning("No valid objects found with surface data")
+        logger.debug("No valid objects found with surface data")
         return None, None, None
         
     return combined_layer_data, valid_objects, layer_fig

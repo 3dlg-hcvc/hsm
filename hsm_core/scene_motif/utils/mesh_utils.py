@@ -30,9 +30,9 @@ def create_furniture_lookup(furniture_specs, retrieved_furniture: List[Obj]) -> 
             base_name = base_name.split('_')[0]
             furniture_lookup[base_name] = obj
 
-        # Match with furniture specs (to link spec names to retrieved Objs if needed elsewhere, though not directly for dimensions here)
+        # Match with furniture specs
         for spec_name_lower in spec_names:
-            if spec_name_lower in obj.label.lower() or obj.label.lower() in spec_name_lower:
+            if spec_name_lower == obj.label.lower():
                 furniture_lookup[spec_name_lower] = obj
 
     logger.debug("Furniture lookup mapping for mesh assignment:")

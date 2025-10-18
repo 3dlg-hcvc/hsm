@@ -164,8 +164,8 @@ async def process_constrained_small_objects(
             )
             processed_motifs.add(motif.id)
         except Exception as e:
-            logger.error(f"Skipping scene motif {motif.id} small objects constrained population due to error: {e}")
-            logger.error(traceback.format_exc())
+            logger.info(f"Skipping scene motif {motif.id} small objects constrained population due to error: {e}")
+            logger.debug(traceback.format_exc())
             continue
 
     return processed_motifs

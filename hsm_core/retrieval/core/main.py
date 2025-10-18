@@ -89,9 +89,7 @@ async def retrieve(
         logger.error(f"Error during batch retrieval: {e}")
         raise
     finally:
-        if server_retrieval_client:
-            await server_retrieval_client.close()
-        elif model is None:
+        if model is None and not server_retrieval_client:
             ModelManager.clear_cache()
 
 

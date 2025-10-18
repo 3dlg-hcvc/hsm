@@ -9,7 +9,7 @@ DATA_PATH = PROJECT_ROOT / "data"
 # This should point to the directory containing HSSD model data
 HSSD_PATH = DATA_PATH / "hssd-models"
 
-MIN_LOGGING_LEVEL = logging.INFO
+GLOBAL_LOGGING_LEVEL_THRESHOLD = logging.DEBUG
 LOGGING_LEVEL_TERMINAL = logging.WARNING
 LOGGING_LEVEL_FILE = logging.INFO
 

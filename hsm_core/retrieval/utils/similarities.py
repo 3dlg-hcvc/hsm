@@ -7,7 +7,6 @@ retrieval systems, eliminating code duplication across the retrieval module.
 
 from typing import List, Tuple, Optional, Any
 import torch
-import numpy as np
 from hsm_core.utils import get_logger
 
 from ..model.embeddings import load_hssd_embeddings_and_index
@@ -88,9 +87,14 @@ def compute_text_embeddings(
 
     tokenized_texts = tokenizer(texts).to(device)
 
-    with torch.no_grad(), torch.amp.autocast(device_type='cuda'):
-        text_embeddings = model.encode_text(tokenized_texts)
-        text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
+    if device == "cuda":
+        with torch.no_grad(), torch.amp.autocast(device_type='cuda'):
+            text_embeddings = model.encode_text(tokenized_texts)
+            text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
+    else:
+        with torch.no_grad():
+            text_embeddings = model.encode_text(tokenized_texts)
+            text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
 
     # Ensure output is float32 to match HSSD embeddings
     return text_embeddings.to(device=device, dtype=torch.float32)
@@ -102,7 +106,7 @@ def compute_similarities_batch(
     chunk_size: int = 1000
 ) -> torch.Tensor:
     """
-    Compute similarities between text and HSSD embeddings in chunks to manage memory.
+    Compute similarities between text and HSSD embeddings in chunks.
 
     Args:
         text_embeddings: Text embeddings tensor
@@ -116,15 +120,12 @@ def compute_similarities_batch(
         return torch.zeros((text_embeddings.shape[0], hssd_embeddings.shape[0]),
                           device=text_embeddings.device, dtype=text_embeddings.dtype)
 
-    # Compute similarities in chunks to avoid memory spikes
     similarities_chunks = []
-
     for i in range(0, hssd_embeddings.shape[0], chunk_size):
         chunk_embeddings = hssd_embeddings[i:i+chunk_size]
         chunk_similarities = torch.matmul(text_embeddings, chunk_embeddings.T)
         similarities_chunks.append(chunk_similarities)
 
-    # Concatenate results directly on GPU to avoid CPU roundtrip
     return torch.cat(similarities_chunks, dim=1)
 
 def compute_similarities(

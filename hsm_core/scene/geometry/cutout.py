@@ -112,7 +112,7 @@ class Cutout:
 
         # Ensure cutout is close to a wall
         if min_distance > CUTOUT_WALL_DISTANCE_THRESHOLD:
-            logger.warning(f"{self.cutout_type} at {self.location} is too far from any wall ({min_distance:.2f}m)")
+            logger.info(f"{self.cutout_type} at {self.location} is too far from any wall ({min_distance:.2f}m)")
             self.is_valid = False
             return False
 
@@ -122,7 +122,7 @@ class Cutout:
         self.wall_length = wall_length
 
         if wall_length < self.width + WALL_CORNER_MARGIN * 2:  # Add margin on both sides
-            logger.warning(f"Wall is too short ({wall_length:.2f}m) for {self.cutout_type} of width {self.width}m")
+            logger.debug(f"Wall is too short ({wall_length:.2f}m) for {self.cutout_type} of width {self.width}m")
 
             # For windows, try to reduce width to fit
             if self.cutout_type == "window":

@@ -13,17 +13,18 @@ from hsm_core.visualization.geometry_2d_visualizer import visualize_object_geome
 from hsm_core.utils.plot_utils import get_scene_transforms
 from hsm_core.utils import get_logger
 
+logger = get_logger(name='scene_motif.visualization')
+
 def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, view_name, object_bounds=None):
     """Helper to finalize any 2D plot by fitting bounds to all artists."""
     matplotlib.use('Agg')
     
-    # Use object bounds directly if provided (preferred method)
     if object_bounds is not None:
         x_min, x_max, y_min, y_max = object_bounds
         x_range = x_max - x_min
         y_range = y_max - y_min
         
-        # Apply generous padding to prevent cropping
+        # Apply padding to prevent cropping
         padding_x = max(x_range * 0.1, 0.1)
         padding_y = max(y_range * 0.1, 0.1)
         
@@ -31,7 +32,6 @@ def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, vie
         ax.set_ylim(y_min - padding_y, y_max + padding_y)
     else:
         # Fallback to matplotlib's autoscale with padding
-        logger = get_logger('scene_motif.visualization')
         logger.warning(f"No object bounds provided for {view_name} plot, using autoscale fallback")
         ax.relim()
         ax.autoscale_view()
@@ -59,13 +59,8 @@ def _finalize_2d_plot(ax, artists, axis_labels, glb_path, output_path, name, vie
         
         try:
             fig.savefig(output_file, dpi=100, bbox_inches='tight', pad_inches=0.1)
-            # Log visualization save instead of printing
-            import logging
-            logger = logging.getLogger('hsm_core.scene_motif.visualization')
             logger.info(f"Saved {view_name} visualization to: {output_file}")
         except Exception as e:
-            import logging
-            logger = logging.getLogger('hsm_core.scene_motif.visualization')
             logger.error(f"Error saving {view_name} visualization plot: {e}")
         finally:
             plt.close(fig)
@@ -131,9 +126,7 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
         color = colors[object_index % len(colors)]
         color_name = colors_names[object_index % len(colors_names)]
         label = override_name[object_index] if override_name and object_index < len(override_name) else node_name
-
-        if verbose:
-            logger.debug(f"Visualizing {view_name}: mesh {node_name} with color {color} and label {label}") 
+        logger.debug(f"Visualizing {view_name}: mesh {node_name} with color {color_name} and label {label}")
         
         try:
             # Use the selected view axes indices
@@ -183,9 +176,9 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
             existing_objects.append({
                 "id": object_index,
                 "name": label,
-                "color": color_name,
-                "position": center_3d.tolist(), 
-                "dimensions": extents_3d.tolist(), 
+                "color": color,
+                "position": center_3d.tolist(),
+                "dimensions": extents_3d.tolist(),
             })
             
             # Add center point marker and text label
@@ -224,10 +217,10 @@ def _visualize_scene_motif_selected_view(glb_path=None, scene=None, override_nam
 
             object_index += 1
         else:
-             if verbose: logger.debug(f"visualize_object_geometry returned no info for {label}")
+            logger.debug(f"visualize_object_geometry returned no info for {label}")
 
     if not found_valid_object:
-        logger.warning(f"No valid objects found to visualize in {view_name} view")
+        logger.debug(f"No valid objects found to visualize in {view_name} view")
         plt.close(fig) # Close the figure if nothing was plotted
         return None, [], scene, {}, {}, {}
     
@@ -400,8 +393,7 @@ def visualize_scene_motif_auto_view(glb_path=None, scene=None, override_name=Non
             # Ensure dimensions are non-negative before multiplication
             spread = max(0, dimensions[0]) * max(0, dimensions[1])
         
-        if verbose:
-            logger.debug(f"View '{view_name_iter}' spread (eligible pool): {spread:.4f}")
+        logger.debug(f"View '{view_name_iter}' spread (eligible pool): {spread:.4f}")
 
         if spread > max_spread:
             max_spread = spread
@@ -410,15 +402,12 @@ def visualize_scene_motif_auto_view(glb_path=None, scene=None, override_name=Non
             best_view_max_bounds = current_max_bounds
 
     if best_view_name is None: # Fallback if no best view determined (e.g. all spreads zero)
-        if verbose:
-            logger.warning("Could not determine best view from eligible pool based on spread. Defaulting to Top XZ")
+        logger.warning("Could not determine best view from eligible pool based on spread. Defaulting to Top XZ")
         best_view_name = "Top XZ" # Default fallback
         if eligible_view_names and "Top XZ" not in eligible_view_names: # If Top XZ wasn't even eligible, pick first eligible
              best_view_name = eligible_view_names[0]
 
-
-    if verbose:
-        logger.info(f"Selected best view: '{best_view_name}' with spread {max_spread:.4f}")
+    logger.info(f"Selected best view: '{best_view_name}' with spread {max_spread:.4f}")
 
     # Get parameters for the best view
     best_view_params = candidate_views[best_view_name]
@@ -466,8 +455,7 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
         try:
             scene = trimesh.load(glb_path, process=False)
             if global_scene_transform is not None:
-                if verbose:
-                    logger.debug(f"Applying global_scene_transform to loaded GLB for all views: {global_scene_transform}")
+                logger.debug(f"Applying global_scene_transform to loaded GLB for all views: {global_scene_transform}")
                 transformed_geometries = {}
                 for geom_name, geom in scene.geometry.items():
                     transformed_geometries[geom_name] = geom.copy().apply_transform(global_scene_transform)
@@ -515,8 +503,7 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
     }
 
     generated_figs_dict: Dict[str, Figure] = {}
-    if verbose:
-        logger.info("Generating all candidate views")
+    logger.info("Generating all candidate views")
 
     for view_name_candidate, view_params_candidate in candidate_views.items():
         indices_candidate = view_params_candidate['indices']
@@ -528,8 +515,7 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
             current_min_bounds_candidate = np.min(vertices_2d_candidate, axis=0)
             current_max_bounds_candidate = np.max(vertices_2d_candidate, axis=0)
 
-        if verbose:
-            logger.debug(f"Generating plot for candidate view: {view_name_candidate}")
+        logger.debug(f"Generating plot for candidate view: {view_name_candidate}")
 
         # Call _visualize_scene_motif_selected_view to generate and save the plot
         fig_candidate, _, _, _, _, _ = _visualize_scene_motif_selected_view(
@@ -549,7 +535,7 @@ def generate_all_motif_views(glb_path=None, scene=None, override_name=None,
         )
         if fig_candidate:
             generated_figs_dict[view_name_candidate] = fig_candidate
-        elif verbose:
-            logger.warning(f"No figure generated for candidate view {view_name_candidate}")
+        else:
+            logger.debug(f"No figure generated for candidate view {view_name_candidate}")
             
     return generated_figs_dict

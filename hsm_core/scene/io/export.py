@@ -13,6 +13,7 @@ from hsm_core.scene.utils.utils import save_scene_state
 from hsm_core.utils.stk_utils import save_stk_scene_state
 from hsm_core.utils import get_logger
 
+logger = get_logger('hsm_core.scene.io.export')
 
 def save_scene(scene, output_dir: Path, suffix: str = "", recreate_scene: bool = False, save_scene_state: bool = False):
     """
@@ -70,12 +71,10 @@ def export_scene(scene, output_path: Path, recreate_scene: bool = False) -> None
 
 def save_scene_state_to_file(scene, output_path: Path) -> None:
     """Save the current scene state to a JSON file."""
-    all_motifs = scene.get_all_motifs()
-
     try:
         save_scene_state(
             room_desc=scene.room_description,
-            scene_motifs=scene._scene_motifs,
+            scene_motifs=scene.scene_motifs,
             room_vertices=scene.room_vertices,
             door_location=scene.door_location,
             room_type=scene.room_type,
@@ -84,7 +83,7 @@ def save_scene_state_to_file(scene, output_path: Path) -> None:
             window_location=scene.window_location or None,
             room_details=scene.room_details
         )
-        logger.info(f"Scene state saved to {output_path} with {len(all_motifs)} motifs")
+        logger.info(f"Scene state saved to {output_path} with {len(scene.scene_motifs)} motifs")
     except Exception as e:
         logger.error(f"Error saving scene state: {e}")
         traceback.print_exc()

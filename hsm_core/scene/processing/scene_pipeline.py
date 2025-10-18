@@ -2,6 +2,7 @@ import sys
 import time
 from omegaconf import DictConfig, ListConfig
 from matplotlib import pyplot as plt
+import torch
 
 from hsm_core.retrieval.model.model_manager import ModelManager
 from hsm_core.scene.processing.ceiling import process_ceiling_objects
@@ -32,7 +33,7 @@ async def setup_scene_generation(cfg: DictConfig | ListConfig, **kwargs) -> dict
     model = kwargs.get('model')
     if model is None:
         logger = get_logger('scene.pipeline')
-        logger.info("Initializing local CLIP model")
+        logger.info("Initializing local CLIP model, cuda is available: " + str(torch.cuda.is_available()))
         model = await ModelManager.get_clip_model_async()
 
     return {

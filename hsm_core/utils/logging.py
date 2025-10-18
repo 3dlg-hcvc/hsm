@@ -16,7 +16,7 @@ Usage:
     custom formatting and handlers.
 """
 
-from hsm_core.config import MIN_LOGGING_LEVEL, LOGGING_LEVEL_TERMINAL, LOGGING_LEVEL_FILE
+from hsm_core.config import GLOBAL_LOGGING_LEVEL_THRESHOLD, LOGGING_LEVEL_TERMINAL, LOGGING_LEVEL_FILE
 
 import logging
 import sys
@@ -72,7 +72,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
     # Configure main HSM logger - this will be the parent for all hsm_core loggers
     logger = logging.getLogger('hsm_core')
-    logger.setLevel(MIN_LOGGING_LEVEL)
+    logger.setLevel(GLOBAL_LOGGING_LEVEL_THRESHOLD)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     # Stop propagation to root to avoid duplicate terminal logs

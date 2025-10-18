@@ -190,17 +190,17 @@ def main():
         }
     ]
     small_test_data = [
-    # {
-        #     'id': 'stack_of_books_01', 'area_name': 'stack of books',
-        #     'composition': {
-        #         'description': 'a stack of 4 books',
-        #         'furniture': [
-        #             ObjectSpec(id=1, name='book', description='a book', dimensions=[0.3, 0.05, 0.2], amount=4)
-        #         ],
-        #         'total_footprint': [0.2, 0., 0.05], 'clearance': 0.5
-        #     },
-        #     'rationale': 'Creates a stack of 4 books'
-        # },
+        {
+            'id': 'stack_of_books_01', 'area_name': 'stack of books',
+            'composition': {
+                'description': 'a stack of 4 books',
+                'furniture': [
+                    ObjectSpec(id=1, name='book', description='a book', dimensions=[0.3, 0.05, 0.2], amount=4)
+                ],
+                'total_footprint': [0.2, 0., 0.05], 'clearance': 0.5
+            },
+            'rationale': 'Creates a stack of 4 books'
+        },
         {
         'id': 'place_setting_01',
         'area_name': 'Place Setting',
@@ -215,6 +215,20 @@ def main():
             'total_footprint': [0.45, 0.3, 0.3], 
             'clearance': 0.5
             }
+        },
+        {
+            'id': 'stack_of_books_and_plates_01',
+            'area_name': 'Stack of Books and Plates',
+            'composition': {
+                'description': 'a stack of 5 books next to a stack of 5 plates',
+        
+                'furniture': [
+                    ObjectSpec(id=1, name='book', description='a book', dimensions=[0.3, 0.05, 0.2], amount=5),
+                    ObjectSpec(id=2, name='plate', description='a plate', dimensions=[0.27, 0.025, 0.27], amount=5)
+                ],
+                'total_footprint': [0.2, 0., 0.05], 'clearance': 0.5
+            },
+            'rationale': 'Creates a stack of 5 books next to a stack of 5 plates'
         }
     ]
     skip_visual_validation = True
@@ -253,7 +267,7 @@ def main():
         
         asyncio.run(batch_inference(motifs, output_dir, "living_room", object_type=object_type, skip_visual_validation=skip_visual_validation, force_make_tight=force_make_tight)) 
     
-    # test_motif_generation(test_large_motifs, ObjectType.LARGE)
+    test_motif_generation(test_large_motifs, ObjectType.LARGE)
     test_motif_generation(test_small_motifs, ObjectType.SMALL)
 
 if __name__ == "__main__":

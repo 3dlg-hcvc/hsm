@@ -21,12 +21,11 @@ def check_support_json_exists(id: str) -> bool:
 def load_support_surface(id: str) -> Optional[Tuple[trimesh.Scene, Dict[str, Any], str]]:
     """Load support surface data from JSON file."""
     if not check_support_json_exists(id):
-        logger.warning(f"Support surface JSON file for {id} does not exist")
+        logger.info(f"Support surface JSON file for {id} does not exist")
         return None, None, None
     
     if not SUPPORT_DIR:
-        logger.error("SUPPORT_DIR is not configured.")
-        return None, None, None
+        raise ValueError("SUPPORT_DIR is not configured.")
 
     json_path = SUPPORT_DIR / id / f"{id}.supportSurface.json.gz"
     mesh_path = SUPPORT_DIR / id / f"{id}.supportSurface.glb"

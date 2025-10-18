@@ -9,7 +9,6 @@ from hsm_core.scene_motif.core.arrangement import Arrangement
 logger = get_logger('scene_motif.spatial.spatial_optimizer')
 
 
-
 def optimize(
     arrangement: Arrangement,
     resolve_collisions: bool = True,
@@ -53,7 +52,8 @@ def optimize(
 
     # Include function_call label for hierarchical context
     label = arrangement.function_call or ""
-    logger.info(f"Spatial optimization [{label}] with {len(all_meshes)} meshes (resolve_collisions: {resolve_collisions}, make_tight: {make_tight}, approximate_gravity: {approximate_gravity})")
+    short_label = label.split('(')[0] if label and '(' in label else label
+    logger.info(f"Spatial optimization [{short_label}] with {len(all_meshes)} meshes (resolve_collisions: {resolve_collisions}, make_tight: {make_tight}, approximate_gravity: {approximate_gravity})")
     overall_start_time = time.time()
 
     # Initialize the applied transformations for each object to the identity matrix
@@ -168,20 +168,15 @@ def optimize(
 
     # ------------------------------------------------------------------------------ Approximate gravity
 
-    if approximate_gravity:
-        logger.info(f"[{label}] Applying gravity approximation to {len(all_meshes)} objects")
-        
+    if approximate_gravity:       
+        settled_meshes_union = None
+         
         # Sort meshes by their centroid Y position to process them from bottom to top.
-        indexed_meshes = list(enumerate(all_meshes))
-        # Sort by the centroid y-value of each mesh (not bounds minimum)
+        indexed_meshes = list(enumerate(all_meshes))        
         sorted_indexed_meshes = sorted(indexed_meshes, key=lambda item: item[1].centroid[1])
         
-        logger.debug(f"[{label}] Processing objects in gravity order:")
         for i, (orig_idx, mesh) in enumerate(sorted_indexed_meshes):
             logger.debug(f"  {i+1}. Object {orig_idx} at Y centroid: {mesh.centroid[1]:.3f}")
-
-        # This will accumulate the meshes that have already been placed, acting as a dynamic "ground".
-        settled_meshes_union = None
 
         # Create a floor plane below all objects to act as the ultimate ground.
         combined_static_mesh: trimesh.Trimesh = trimesh.util.concatenate(all_meshes)
@@ -190,12 +185,12 @@ def optimize(
 
         # Process each mesh in bottom-up order.
         for process_idx, (original_index, mesh) in enumerate(sorted_indexed_meshes):
-            logger.debug(f"[{label}] Processing object {original_index} (step {process_idx + 1}/{len(sorted_indexed_meshes)})")
+            logger.debug(f"Processing object {original_index} (step {process_idx + 1}/{len(sorted_indexed_meshes)})")
             
             # Sample points on the bottom-facing surfaces of the current mesh.
             surface_pts, face_idxs = trimesh.sample.sample_surface_even(mesh, 2048)
             if len(surface_pts) == 0:
-                logger.debug(f"[{label}] No surface points for object {original_index}, skipping")
+                logger.debug(f"No surface points for object {original_index}, skipping")
                 continue
 
             normals = mesh.face_normals[face_idxs]
@@ -204,7 +199,7 @@ def optimize(
             ground_facing_pts = surface_pts[ground_facing_mask]
             
             if len(ground_facing_pts) == 0:
-                logger.debug(f"[{label}] No downward-facing points for object {original_index}, skipping")
+                logger.debug(f"No downward-facing points for object {original_index}, skipping")
                 continue
 
             ray_origins = ground_facing_pts
@@ -226,7 +221,7 @@ def optimize(
                 # Only apply gravity if there's a significant gap (avoid tiny adjustments)
                 min_distance_to_drop = np.min(distances)
                 if min_distance_to_drop > 0.001:  # 1mm threshold
-                    logger.debug(f"[{label}] Dropping object {original_index} by {min_distance_to_drop:.3f}m")
+                    logger.debug(f"Dropping object {original_index} by {min_distance_to_drop:.3f}m")
                     
                     # Apply the gravity translation.
                     gravity_translation = [0, -min_distance_to_drop, 0]
@@ -235,9 +230,9 @@ def optimize(
                     # Update the transformation for this specific object using its original index.
                     applied_transformations[original_index] = np.dot(translation_matrix, applied_transformations[original_index])
                 else:
-                    logger.debug(f"[{label}] Object {original_index} already properly supported (gap: {min_distance_to_drop:.4f}m)")
+                    logger.debug(f"Object {original_index} already properly supported (gap: {min_distance_to_drop:.4f}m)")
             else:
-                logger.debug(f"[{label}] No support intersection found for object {original_index}")
+                logger.debug(f"No support intersection found for object {original_index}")
 
             # Add the now-settled mesh to the union for subsequent objects to rest on.
             if settled_meshes_union is None:
@@ -250,11 +245,8 @@ def optimize(
             if "floor_plane" in scene.geometry:
                 scene.delete_geometry("floor_plane")
         except Exception as e:
-            # Ignore errors when removing floor plane - it's not critical
             pass
         
-        logger.info(f"[{label}] Gravity approximation completed")
-
     # ------------------------------------------------------------------------------ Update the arrangement with the applied transformations
     opt_objs = deepcopy(arrangement.objs)
     optimized_arrangement = Arrangement(
@@ -266,9 +258,8 @@ def optimize(
     )
     optimized_arrangement.glb_path = arrangement.glb_path
     
-    # Create a mapping from original object index to the position in obj_with_mesh
+    # map the original object to the optimized object
     obj_with_mesh_indices = { id(obj): i for i, obj in enumerate(obj_with_mesh) }
-    
     for orig_obj, new_obj  in zip(arrangement.objs, opt_objs):
         if not orig_obj.has_mesh:
             continue
@@ -279,6 +270,5 @@ def optimize(
         c4 = np.append(new_obj.bounding_box.centroid, 1.0)
         new_obj.bounding_box.centroid = (tf @ c4)[:3]
     
-    # Log completion with label
-    logger.info(f"[{label}] Optimized all objects in {(time.time() - overall_start_time):.3f} s")
+    logger.info(f"[{short_label}] Optimized all objects in {(time.time() - overall_start_time):.3f} s")
     return optimized_arrangement

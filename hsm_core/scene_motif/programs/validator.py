@@ -102,9 +102,7 @@ def validate_syntax(program: Program, require_objs: bool = False, require_arrang
 
         return False, f"The program has a syntax error on line {lineno}: {e.msg}\nCode context:\n{code_context}\n"
     except Exception as e:
-        import traceback
-        tb_str = traceback.format_exc()
-        return False, f"The program has a runtime error: {e}\nTraceback:\n{tb_str}\n"
+        return False, f"The program has a runtime error: {e}"
 
 # def validate_naive_listing(program: Program) -> tuple[bool, str]:
 #     '''

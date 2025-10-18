@@ -12,7 +12,6 @@ dependencies:
   - pyyaml
   - pyrender
   - natsort
-  - scikit-learn
   - omegaconf
 
   # For GPT
@@ -21,19 +20,15 @@ dependencies:
 
   # For Trimesh
   - trimesh=4
-  - pyglet<2
   - scipy
   - pillow
-  - networkx
   - rtree
   - shapely
-  - ffmpeg
   
   # For CLIP
   - pytorch
   - torchvision
   - pytorch-cuda=12.1
-  - ftfy
   - regex
   - tqdm
 
@@ -45,15 +40,10 @@ dependencies:
 
     - huggingface-hub
 
-    - pygltflib==1.16.1
-
     # For trimesh collision detection and raycasting
     - python-fcl
     - manifold3d
     - embreex
 
     - earcut
-    - open3d
     - compress_json
-    - pymesh
-    - opencv-python

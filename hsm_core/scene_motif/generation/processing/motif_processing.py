@@ -102,7 +102,7 @@ async def process_motif_with_visual_validation(
                 inference_session, arrangement_json, motif.object_specs, retrieved_furniture)
             
             if not success:
-                logger.warning(f"Arrangement processing failed on attempt {attempt + 1}")
+                logger.info(f"Arrangement processing failed on attempt {attempt + 1}")
                 decompose_session.add_feedback(f"The generated arrangement ({main_call}) could not be executed.")
                 continue
 
@@ -195,8 +195,8 @@ async def process_motif_with_visual_validation(
                 logger.info(f"Visualization generated successfully")
                 validate_session = gpt.Session(str(PROMPT_DIR / "sm_prompts_inference.yaml"))
                 try:
-                    logger.info(f"Sending arrangement to VLM for visual validation...")
-                    logger.info(f"Validating motif description: '{motif.description}'")
+                    logger.info(f"Sending scene motif to VLM for visual validation...")
+                    logger.info(f"Validating scene motif description: '{motif.description}'")
                     
                     validation_result = await send_llm_with_images_async(
                         validate_session, "validate",

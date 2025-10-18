@@ -141,7 +141,8 @@ async def build_arrangement_from_json(
             inference_session,
             arrangement_json,
             retrieved_furniture,
-            furniture_lookup=furniture_lookup
+            furniture_lookup=furniture_lookup,
+            furniture_specs=furniture_specs
         )
 
         global_logger.debug(f"Received main_call: {main_call[:100] if main_call else 'None/Empty'}...")

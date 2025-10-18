@@ -258,7 +258,7 @@ def inference_validation(response: str, meta_program: Program, variables: Option
         # Validate syntax
         valid, error_message = validator.validate_syntax(test_program, variables=variables)
         if not valid:
-            return False, f"Syntax error: {error_message}", 0
+            return False, f"Program error: {error_message}", 0
 
         # If expected_objects is provided, validate that only available objects are used
         if expected_objects is not None:

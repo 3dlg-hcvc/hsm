@@ -17,12 +17,19 @@ logger = get_logger('scene_motif.generation.llm.llm_generators')
 
 async def generate_arrangement(inference_session, motif_type, meta_program, 
                                description, furniture_objs: List[Obj], 
-                               is_leaf=False, sub_arrangements=None):
+                               is_leaf=False, sub_arrangements=None, furniture_specs=None):
     """Generate a single arrangement or sub-arrangement."""
     try:
         if is_leaf:
-            # Get list of available objects (those with meshes)
-            available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'mesh') and obj.mesh is not None]
+            # Get list of available objects from furniture_specs if available, otherwise from furniture_objs
+            if furniture_specs:
+                available_object_labels = [spec.name.lower() for spec in furniture_specs for _ in range(spec.amount)]
+                logger.debug(f"Available object labels from furniture_specs: {available_object_labels}")
+            else:
+                obj_info = [f"{obj.label if hasattr(obj, 'label') else 'NO_LABEL'} (type: {type(obj)})" for obj in furniture_objs]
+                logger.debug(f"Furniture objects for leaf node: {obj_info}")
+                available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'label') and obj.label]
+                logger.debug(f"Available object labels from furniture_objs: {available_object_labels}")
 
             function_call_response = inference_session.send_with_validation("inference",
                 {
@@ -54,8 +61,15 @@ async def generate_arrangement(inference_session, motif_type, meta_program,
                 arrangement_context = "No sub-arrangements available"
                 
             # Use hierarchical inference for non-leaf nodes
-            # Get list of available objects (those with meshes)
-            available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'mesh') and obj.mesh is not None]
+            # Get list of available objects from furniture_specs if available, otherwise from furniture_objs
+            if furniture_specs:
+                available_object_labels = [spec.name.lower() for spec in furniture_specs for _ in range(spec.amount)]
+                logger.debug(f"Available object labels from furniture_specs: {available_object_labels}")
+            else:
+                obj_info = [f"{obj.label if hasattr(obj, 'label') else 'NO_LABEL'} (type: {type(obj)})" for obj in furniture_objs]
+                logger.debug(f"Furniture objects for non-leaf node: {obj_info}")
+                available_object_labels = [obj.label for obj in furniture_objs if hasattr(obj, 'label') and obj.label]
+                logger.debug(f"Available object labels from furniture_objs: {available_object_labels}")
 
             function_call_response = inference_session.send_with_validation("inference_hierarchical",
                 {
@@ -73,12 +87,12 @@ async def generate_arrangement(inference_session, motif_type, meta_program,
         logger.debug(f"Extracted code for {motif_type}: {extracted_code[:100]}...")
         return extracted_code
     except Exception as e:
-        logger.error(f"Error generating arrangement: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
+        logger.info(f"Error generating arrangement: {str(e)}")
+        logger.debug(f"Traceback: {traceback.format_exc()}")
         return ""  # Return empty string on error to prevent None
 
 
-async def generate_arrangement_code(inference_session, arrangement_json, furniture_objs: List[Obj], *, furniture_lookup: Dict[str, Obj] | None = None):
+async def generate_arrangement_code(inference_session, arrangement_json, furniture_objs: List[Obj], *, furniture_lookup: Dict[str, Obj] | None = None, furniture_specs: List = None):
     """Generate Python code strings for arrangements
 
     This function is responsible ONLY for interacting with the VLM to generate
@@ -110,12 +124,12 @@ async def generate_arrangement_code(inference_session, arrangement_json, furnitu
         sub_arrangements = []
         if "elements" in arrangement_json_data:
             sub_arrangements = await _generate_nested_arrangement_codes(
-                inference_session, arrangement_json_data["elements"], available_furniture, furniture_lookup=furniture_lookup
+                inference_session, arrangement_json_data["elements"], available_furniture, furniture_lookup=furniture_lookup, furniture_specs=furniture_specs
             )
 
         # PHASE 3: Generate main arrangement code
         main_call = await _generate_main_arrangement_code(
-            inference_session, arrangement_json_data, available_furniture, sub_arrangements
+            inference_session, arrangement_json_data, available_furniture, sub_arrangements, furniture_specs=furniture_specs
         )
 
         logger.debug(f"Generated main_call: {main_call[:100] if main_call else 'None/Empty'}...")
@@ -129,17 +143,17 @@ async def generate_arrangement_code(inference_session, arrangement_json, furnitu
         raise
 
 
-async def _generate_nested_arrangement_codes(inference_session, elements, available_furniture, *, furniture_lookup: Dict[str, Obj] | None = None):
+async def _generate_nested_arrangement_codes(inference_session, elements, available_furniture, *, furniture_lookup: Dict[str, Obj] | None = None, furniture_specs: List = None):
     """PHASE 2: Generate code for nested arrangements bottom-up"""
     all_arrangement_codes = await _generate_element_codes(
-        inference_session, elements, available_furniture, furniture_lookup=furniture_lookup
+        inference_session, elements, available_furniture, furniture_lookup=furniture_lookup, furniture_specs=furniture_specs
     )
     # Sort by depth in descending order and extract type, code, and empty objects for final return value
     sorted_codes = sorted(all_arrangement_codes, key=lambda x: -x[2])  # depth is at index 2
     return [(t, c, []) for t, c, d in sorted_codes]  # Return (motif_type, code_string, [])
 
 
-async def _generate_element_codes(inference_session, elements, available_furniture, depth=0, furniture_lookup: Dict[str, Obj] | None = None):
+async def _generate_element_codes(inference_session, elements, available_furniture, depth=0, furniture_lookup: Dict[str, Obj] | None = None, furniture_specs: List = None):
     """Generate Python code strings for elements"""
     local_arrangements = []
 
@@ -161,7 +175,7 @@ async def _generate_element_codes(inference_session, elements, available_furnitu
         sub_codes = []
         if "elements" in element:
             nested_codes = await _generate_element_codes(
-                inference_session, element["elements"], available_furniture, depth + 1, furniture_lookup=furniture_lookup
+                inference_session, element["elements"], available_furniture, depth + 1, furniture_lookup=furniture_lookup, furniture_specs=furniture_specs
             )
             # Extract codes and objects for this level
             sub_codes = [(t, c, []) for t, c, d in nested_codes if d == depth + 1]
@@ -197,7 +211,8 @@ async def _generate_element_codes(inference_session, elements, available_furnitu
             element.get("description", ""),
             element_furniture_objs,
             is_leaf=is_leaf,
-            sub_arrangements=sub_codes
+            sub_arrangements=sub_codes,
+            furniture_specs=furniture_specs
         )
 
         local_arrangements.append((element["type"], arrangement_code, depth))
@@ -205,7 +220,7 @@ async def _generate_element_codes(inference_session, elements, available_furnitu
     return local_arrangements
 
 
-async def _generate_main_arrangement_code(inference_session, arrangement_json_data, available_furniture, sub_arrangements):
+async def _generate_main_arrangement_code(inference_session, arrangement_json_data, available_furniture, sub_arrangements, furniture_specs=None):
     """PHASE 3: Generate the main arrangement code"""
     main_furniture_objs_list = list(available_furniture.values())
 
@@ -220,7 +235,8 @@ async def _generate_main_arrangement_code(inference_session, arrangement_json_da
         arrangement_json_data["description"],
         main_furniture_objs_list,
         is_leaf=False,
-        sub_arrangements=sub_arrangements
+        sub_arrangements=sub_arrangements,
+        furniture_specs=furniture_specs
     )
 
     return main_call 

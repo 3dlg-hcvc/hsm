@@ -49,11 +49,13 @@ async def _compute_similarities_shared(
             # Re-raise server errors to stop scene generation
             raise
     else:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         return compute_similarities(
             texts,
             model=model_instance,
             tokenizer=tokenizer,
             filter_indices=filter_indices or [],
+            device=device,
         )
 
 
@@ -126,7 +128,7 @@ async def run_primary_retrieval(
     if hssd_dir_path is None:
         hssd_dir_path = HSSD_PATH
         if hssd_dir_path is None:
-            raise ValueError("HSSD directory path is not configured. Please check your path configuration.")
+            raise ValueError("HSSD directory path is not configured. Please check hsm_core.config.HSSD_PATH.")
 
     logger.info("Computing similarities for filtered meshes")
 

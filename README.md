@@ -10,7 +10,11 @@
 This repo contains the official implementation of Hierarchical Scene Motifs (HSM), a hierarchical framework for generating realistic indoor environments in a unified manner across scales using scene motifs.
 
 ## Environment Setup
-The repo is tested on Ubuntu 22.04 LTS with `Python 3.11` and `CUDA 12.1`.
+The repo is tested on Ubuntu 22.04 LTS with `Python 3.11` and (optional) `CUDA 12.1` for faster object retrieval using CLIP.
+
+For setting up the environment, you need to have the following tools installed:
+   - `git` and `git-lfs` for downloading HSSD models
+   - `conda` or `mamba` for environment setup
 
 ### Automated Setup (Recommended)
 
@@ -34,16 +38,20 @@ The repo is tested on Ubuntu 22.04 LTS with `Python 3.11` and `CUDA 12.1`.
    ./setup.sh
    ```
 
-This bash script handles all remaining setup steps including:
+This setup script handles all remaining setup steps including:
 - Conda environment creation
 - HSSD models downloads from Hugging Face
 - Preprocessed data downloads from GitHub
 - Verify file structure
 
+**Note**: If downloads fail or are interrupted, you can run the setup script again to continue from where it left off.
+
 ### Manual Setup
+If the automated setup script fails, you can follow the instructions below to manually setup the environment.
 <details>
 <summary>Click to expand</summary>
 
+#### Prepare environment variables
 1. Create a `.env` file in the root directory following the template in `.env.example` and add your OpenAI API key.
 
 2. We use `mamba` (or `conda`) for environment setup:
@@ -54,7 +62,7 @@ This bash script handles all remaining setup steps including:
 #### Preprocessed Data
 1. Visit the [HSM releases page](https://github.com/3dlg-hcvc/hsm/releases)
 2. Download `data.zip` from the latest release
-3. Unzip at `data/` at root
+3. Unzip it at root directory, it should create a `data/` directory at root directory
 
 #### Assets for Retrieval
 We retrieve 3D models from the [Habitat Synthetic Scenes Dataset (HSSD)](https://3dlg-hcvc.github.io/hssd/).
@@ -64,7 +72,7 @@ We retrieve 3D models from the [Habitat Synthetic Scenes Dataset (HSSD)](https:/
     Get your API token from [here](https://huggingface.co/settings/tokens).
     Then, clone the dataset repository (~72GB) under `data`:
     ```bash
-    mkdir data && cd data
+    cd data
     hf auth login
     git lfs install
     git clone git@hf.co:datasets/hssd/hssd-models
@@ -132,6 +140,13 @@ python main.py -d "A small living room with a desk and a chair. The desk have a 
 
 To change the parameters, you can edit the `configs/scene/scene_config.yaml` file.
 
+## Performance & Cost Estimates
+
+- **Cost**: Approximately **USD $0.80** per scene
+- **Time**: Approximately **10 minutes** per scene
+
+These estimates are based on average scene generation runs using the default settings and may vary depending on input description, scene complexity and API response times.
+
 ## Output
 
 The default result folder have the following structure:
@@ -160,9 +175,9 @@ For more details, please refer to the [official SceneEval repo](https://github.c
 ## Adding New Motif Types
 
 To add new motif types, you need to:
-1. Learn new motif types following the **Learn Meta-Program from Example** instructions in the [SMC repo](https://github.com/3dlg-hcvc/smc).
-1. Add the learned meta-program from SMC to the `data/motif_library/meta_programs/` directory.
-3. Update `configs/prompts/motif_types.yaml` by following the format in the `motifs` and `constraints` sections.
+1. Learn a new motif type following the [**Learn Meta-Program from Example**](https://github.com/3dlg-hcvc/smc?tab=readme-ov-file#learn-meta-program-from-example) instructions in the SMC repo.
+2. Add the learned meta-program JSON file from SMC to the `data/motif_library/meta_programs/` directory.
+3. Update `configs/prompts/motif_types.yaml` and add the new motif type following the format in the `motifs` and `constraints` sections.
 
 
 ## Credits

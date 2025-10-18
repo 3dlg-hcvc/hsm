@@ -365,7 +365,7 @@ def extract_support_region(
     valid_heights = _get_valid_heights(parsed_data)
     
     if not valid_heights:
-        logger.warning("No valid heights found in support data.")
+        logger.debug("No valid heights found in support data.")
         return None, {}
     
     geometries_by_height = _group_geometries_by_height(scene, valid_heights)
@@ -374,14 +374,14 @@ def extract_support_region(
     valid_heights = sorted(geometries_by_height.keys(), reverse=True)
     
     if not valid_heights:
-        logger.warning("No valid layers found after filtering geometries.")
+        logger.debug("No valid layers found after filtering geometries.")
         return None, {}
     
     valid_heights, layer_heights = _calculate_layer_heights_and_filter(valid_heights, verbose)
     top_layers, layer_info = _detect_top_layers(geometries_by_height, valid_heights, verbose)
 
     if not valid_heights:
-        logger.warning("No valid layers found for visualization.")
+        logger.debug("No valid layers found for visualization.")
         return None, {}
 
     # Calculate global bounds for relative scaling if needed
