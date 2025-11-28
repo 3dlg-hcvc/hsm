@@ -49,7 +49,7 @@ This setup script handles all remaining setup steps including:
 **Note**: If downloads fail or are interrupted, you can run the setup script again to continue from where it left off.
 
 ### Manual Setup
-If the automated setup script fails, you can follow the instructions below to manually setup the environment.
+You can follow the instructions below to manually setup the environment.
 <details>
 <summary>Click to expand</summary>
 
@@ -173,6 +173,7 @@ By default, `stk_scene_state.json` will be generated in the output folder and ca
 
 For more details, please refer to the [official SceneEval repo](https://github.com/3dlg-hcvc/SceneEval).
 
+We also provide the HSM-generated SceneEval-500 scenes and the support region dataset on [HuggingFace](https://huggingface.co/datasets/3dlg-hcvc/hsm).
 
 ## Adding New Motif Types
 
